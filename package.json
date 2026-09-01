@@ -1,0 +1,36 @@
+{
+  "name": "agent-redteam-framework",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "test": "npm run test --workspace=frontend",
+    "typecheck": "npm run typecheck --workspace=frontend",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
+    "docker:down": "docker-compose down -v",
+    "db:migrate": "cd backend && alembic upgrade head",
+    "db:seed": "cd backend && python ../scripts/seed_demo_data.py",
+    "test": "npm run test --workspace=frontend && cd backend && python -m pytest tests/ -v",
+    "lint": "npm run lint --workspace=frontend && cd backend && ruff check . && mypy app --ignore-missing-imports",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down -v",
+    "seed": "cd backend && python ../scripts/seed_demo_data.py",
+    "regression": "cd backend && python ../scripts/run_seeded_regression.py"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
