@@ -1,0 +1,98 @@
+name: Regression Gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  EVAL_MODE: local
+  DEV_MOCK_TARGET_AGENT: true
+  DEV_MOCK_JUDGE: true
+
+jobs:
+  regression-gate:
+    name: Run Regression Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: redteam
+        ports: 5432:5432
+        options: --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=5
+      chromadb:
+        image: chromadb/chroma:0.4.22
+        ports: 8000:8000
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports: 9000:9000
+        options: --health-cmd="curl -f http://localhost:9000/minio/health/live" --health-interval=30s --health-timeout=20s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -e ".[dev]"
+      
+      - name: Run migrations
+        run: |
+          cd backend
+          alembic upgrade head
+      
+      - name: Seed test data
+        run: |
+          cd backend
+          python ../scripts/seed_demo_data.py
+      
+      - name: Run seeded regression benchmark
+        id: benchmark
+        run: |
+          cd backend
+          python ../scripts/run_seeded_regression.py
+        env:
+          EVAL_MODE: local
+          DEV_MOCK_TARGET_AGENT: true
+          DEV_MOCK_JUDGE: true
+      
+      - name: Check gate result
+        run: |
+          echo "Regression gate completed successfully"
+          echo "All seeded regressions detected and blocked"
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-benchmark-results
+          path: backend/benchmark-results.json
+        if: always()
+
+  notify-on-failure:
+    name: Notify on Failure
+    needs: regression-gate
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "Regression gate failed! Seeded regressions not detected."
+          # Add Slack/email notification here

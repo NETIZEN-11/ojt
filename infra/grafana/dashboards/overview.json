@@ -1,0 +1,106 @@
+{
+  "dashboard": {
+    "title": "RedTeam Framework Overview",
+    "tags": ["redteam", "overview"],
+    "timezone": "utc",
+    "panels": [
+      {
+        "title": "Total Runs",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redteam_runs_total",
+            "legendFormat": "Total Runs"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "title": "Pass Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redteam_pass_rate",
+            "legendFormat": "Pass Rate %"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "title": "Active Regressions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redteam_regressions_active",
+            "legendFormat": "Active Regressions"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "title": "Critical Findings",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redteam_critical_findings",
+            "legendFormat": "Critical Findings"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "title": "Runs Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(redteam_runs_created_total[5m])",
+            "legendFormat": "Runs/sec"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8}
+      },
+      {
+        "title": "Run Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, redteam_run_duration_seconds_bucket)",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, redteam_run_duration_seconds_bucket)",
+            "legendFormat": "p50"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8}
+      },
+      {
+        "title": "Cost Tracking",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redteam_cost_usd_total",
+            "legendFormat": "Total Cost USD"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8}
+      },
+      {
+        "title": "Review Queue Size",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redteam_review_queue_size",
+            "legendFormat": "Pending Reviews"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

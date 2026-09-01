@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redteam-worker
+  namespace: redteam-framework
+  labels:
+    app: redteam-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redteam-worker
+  template:
+    metadata:
+      labels:
+        app: redteam-worker
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/your-org/redteam-framework-backend:latest
+        command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
+        envFrom:
+        - configMapRef:
+            name: redteam-config
+        - secretRef:
+            name: redteam-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      serviceAccountName: redteam-worker
