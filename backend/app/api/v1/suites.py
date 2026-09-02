@@ -1,17 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 from datetime import datetime
-from typing import List, Optional, Union
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_suite_repo, get_case_repo, get_current_active_user, require_role, TokenData
-from app.repositories.suites import TestSuiteRepository, TestCaseRepository
-from app.services.suite_service import SuiteService
-from app.models.test_suite import TestSuite, TestCase
-from app.domain.enums import TestCaseCategory, TestCaseSeverity
+from app.api.deps import TokenData, get_case_repo, get_suite_repo, require_role
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
+from app.domain.enums import TestCaseCategory, TestCaseSeverity
+from app.models.test_suite import TestCase
+from app.repositories.suites import TestCaseRepository, TestSuiteRepository
+from app.services.suite_service import SuiteService
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -47,13 +46,13 @@ class TestCaseResponse(BaseModel):
 class TestSuiteResponse(BaseModel):
     id: UUID
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     version: int
     schema_version: str
     is_active: bool
-    test_cases: List[TestCaseResponse] = []
-    created_at: Union[datetime, str]
-    updated_at: Union[datetime, str]
+    test_cases: list[TestCaseResponse] = []
+    created_at: datetime | str
+    updated_at: datetime | str
 
     class Config:
         from_attributes = True
@@ -61,16 +60,16 @@ class TestSuiteResponse(BaseModel):
 
 class TestSuiteCreate(BaseModel):
     name: str
-    description: Optional[str] = None
-    test_cases: List[dict]
+    description: str | None = None
+    test_cases: list[dict]
 
 
 class ValidateResponse(BaseModel):
     valid: bool
-    errors: List[str] = []
+    errors: list[str] = []
 
 
-@router.get("/", response_model=List[TestSuiteResponse])
+@router.get("/", response_model=list[TestSuiteResponse])
 async def list_suites(
     skip: int = 0,
     limit: int = 100,
@@ -217,3 +216,147 @@ async def list_versions(
     version_repo = TestSuiteVersionRepository(suite_repo.session)
     versions = await version_repo.list(filters={"suite_id": suite_id})
     return [{"version": v.version, "created_at": v.created_at.isoformat(), "changelog": v.changelog} for v in versions]
+
+
+class TestCaseCreate(BaseModel):
+    test_case_id: str
+    category: TestCaseCategory
+    severity: TestCaseSeverity
+    input: str
+    expected_behavior_type: str
+    expected_behavior_matcher: dict = {}
+    metadata: dict = {}
+
+
+class TestCaseUpdate(BaseModel):
+    test_case_id: str | None = None
+    category: TestCaseCategory | None = None
+    severity: TestCaseSeverity | None = None
+    input: str | None = None
+    expected_behavior_type: str | None = None
+    expected_behavior_matcher: dict | None = None
+    metadata: dict | None = None
+    is_active: bool | None = None
+
+
+@router.post("/{suite_id}/test-cases", response_model=TestCaseResponse, status_code=201)
+async def create_test_case(
+    suite_id: UUID,
+    test_case: TestCaseCreate,
+    suite_repo: TestSuiteRepository = Depends(get_suite_repo),
+    case_repo: TestCaseRepository = Depends(get_case_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
+):
+    suite = await suite_repo.get(suite_id)
+    if not suite:
+        raise NotFoundError("TestSuite", str(suite_id))
+
+    from app.domain.enums import ExpectedBehaviorType
+    from app.domain.value_objects import ExpectedBehavior, MatcherConfig, TestCaseMetadata
+
+    expected_behavior = ExpectedBehavior(
+        type=ExpectedBehaviorType(test_case.expected_behavior_type),
+        matcher=MatcherConfig(**test_case.expected_behavior_matcher) if test_case.expected_behavior_matcher else None,
+    )
+
+    metadata = TestCaseMetadata(**test_case.metadata) if test_case.metadata else TestCaseMetadata()
+
+    new_case = TestCase(
+        suite_id=suite_id,
+        test_case_id=test_case.test_case_id,
+        category=test_case.category,
+        severity=test_case.severity,
+        input=test_case.input,
+        expected_behavior_type=ExpectedBehaviorType(test_case.expected_behavior_type),
+        expected_behavior=expected_behavior,
+        metadata=metadata,
+        created_by=UUID(current_user.sub),
+    )
+    new_case = await case_repo.create(new_case)
+
+    version = TestCaseVersion(
+        test_case_id=new_case.id,
+        version=1,
+        snapshot=test_case.model_dump(),
+        created_by=UUID(current_user.sub),
+    )
+    await case_repo.session.add(version)
+    await case_repo.session.flush()
+
+    return _build_case_response(new_case)
+
+
+@router.put("/{suite_id}/test-cases/{case_id}", response_model=TestCaseResponse)
+async def update_test_case(
+    suite_id: UUID,
+    case_id: UUID,
+    update: TestCaseUpdate,
+    suite_repo: TestSuiteRepository = Depends(get_suite_repo),
+    case_repo: TestCaseRepository = Depends(get_case_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
+):
+    suite = await suite_repo.get(suite_id)
+    if not suite:
+        raise NotFoundError("TestSuite", str(suite_id))
+
+    case = await case_repo.get(case_id)
+    if not case or case.suite_id != suite_id:
+        raise NotFoundError("TestCase", str(case_id))
+
+    from app.domain.enums import ExpectedBehaviorType
+    from app.domain.value_objects import ExpectedBehavior, MatcherConfig, TestCaseMetadata
+
+    update_data = update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        if key == "expected_behavior_type" and value:
+            case.expected_behavior_type = ExpectedBehaviorType(value)
+        elif key == "expected_behavior_matcher" and value:
+            matcher_config = MatcherConfig(**value)
+            if case.expected_behavior:
+                case.expected_behavior.matcher = matcher_config
+            else:
+                case.expected_behavior = ExpectedBehavior(
+                    type=case.expected_behavior_type,
+                    matcher=matcher_config,
+                )
+        elif key == "metadata" and value:
+            case.test_case_metadata = TestCaseMetadata(**value)
+        elif key == "category" and value:
+            case.category = value
+        elif key == "severity" and value:
+            case.severity = value
+        else:
+            setattr(case, key, value)
+
+    case.updated_at = datetime.utcnow()
+
+    version = TestCaseVersion(
+        test_case_id=case.id,
+        version=case.version + 1,
+        snapshot=update_data,
+        created_by=UUID(current_user.sub),
+    )
+    await case_repo.session.add(version)
+    await case_repo.session.flush()
+
+    return _build_case_response(case)
+
+
+@router.delete("/{suite_id}/test-cases/{case_id}")
+async def delete_test_case(
+    suite_id: UUID,
+    case_id: UUID,
+    suite_repo: TestSuiteRepository = Depends(get_suite_repo),
+    case_repo: TestCaseRepository = Depends(get_case_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
+):
+    suite = await suite_repo.get(suite_id)
+    if not suite:
+        raise NotFoundError("TestSuite", str(suite_id))
+
+    case = await case_repo.get(case_id)
+    if not case or case.suite_id != suite_id:
+        raise NotFoundError("TestCase", str(case_id))
+
+    await case_repo.delete(case)
+    return {"message": "Test case deleted"}

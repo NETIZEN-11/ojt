@@ -1,13 +1,12 @@
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from jose import jwt, JWTError
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 
 from app.core.config import get_settings
 
@@ -32,8 +31,8 @@ class TokenData(BaseModel):
     sub: str
     username: str
     email: str
-    roles: List[str]
-    scopes: List[str]
+    roles: list[str]
+    scopes: list[str]
     exp: int
 
 
@@ -54,24 +53,24 @@ def get_password_hash(password: str) -> str:
 
 def load_private_key() -> tuple[str, str]:
     if settings.JWT_PRIVATE_KEY_PATH and os.path.exists(settings.JWT_PRIVATE_KEY_PATH):
-        with open(settings.JWT_PRIVATE_KEY_PATH, "r") as f:
+        with open(settings.JWT_PRIVATE_KEY_PATH) as f:
             return f.read(), settings.JWT_ALGORITHM
     return settings.SECRET_KEY, "HS256"
 
 
 def load_public_key() -> tuple[str, str]:
     if settings.JWT_PUBLIC_KEY_PATH and os.path.exists(settings.JWT_PUBLIC_KEY_PATH):
-        with open(settings.JWT_PUBLIC_KEY_PATH, "r") as f:
+        with open(settings.JWT_PUBLIC_KEY_PATH) as f:
             return f.read(), settings.JWT_ALGORITHM
     return settings.SECRET_KEY, "HS256"
 
 
 def create_access_token(
-    data: Dict[str, Any],
-    expires_delta: Optional[timedelta] = None,
+    data: dict[str, Any],
+    expires_delta: timedelta | None = None,
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
+    expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire, "type": "access"})
@@ -79,9 +78,9 @@ def create_access_token(
     return jwt.encode(to_encode, private_key, algorithm=algorithm)
 
 
-def create_refresh_token(data: Dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any]) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
     private_key, algorithm = load_private_key()
     return jwt.encode(to_encode, private_key, algorithm=algorithm)
@@ -143,7 +142,7 @@ async def get_current_user(
     return token_data
 
 
-def require_role(required_roles: List[str]):
+def require_role(required_roles: list[str]):
     async def role_checker(current_user: TokenData = Depends(get_current_user)) -> TokenData:
         if not any(role in current_user.roles for role in required_roles):
             raise HTTPException(
@@ -155,7 +154,7 @@ def require_role(required_roles: List[str]):
     return role_checker
 
 
-def require_scope(required_scopes: List[str]):
+def require_scope(required_scopes: list[str]):
     async def scope_checker(current_user: TokenData = Depends(get_current_user)) -> TokenData:
         if not any(scope in current_user.scopes for scope in required_scopes):
             raise HTTPException(
@@ -177,7 +176,7 @@ ROLE_SCOPES = {
 }
 
 
-def get_scopes_for_roles(roles: List[str]) -> List[str]:
+def get_scopes_for_roles(roles: list[str]) -> list[str]:
     scopes = set()
     for role in roles:
         scopes.update(ROLE_SCOPES.get(role, []))

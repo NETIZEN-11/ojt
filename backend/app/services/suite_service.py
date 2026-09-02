@@ -1,15 +1,20 @@
-from typing import Optional, List, Dict, Any
-from uuid import UUID, uuid4
 from datetime import datetime
-import yaml
+from uuid import UUID
+
 import jsonschema
+import yaml
 
-from app.repositories.suites import TestSuiteRepository, TestCaseRepository
-from app.models.test_suite import TestSuite, TestSuiteVersion, TestCase, TestCaseVersion
-from app.domain.enums import TestCaseCategory, TestCaseSeverity, ExpectedBehaviorType
-from app.domain.value_objects import MatcherConfig, ExpectedBehavior, TestCaseMetadata, LLMRubric, LLMRubricCriterion
-from app.core.exceptions import ValidationError, NotFoundError, ConflictError
-
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.domain.enums import ExpectedBehaviorType, TestCaseCategory, TestCaseSeverity
+from app.domain.value_objects import (
+    ExpectedBehavior,
+    LLMRubric,
+    LLMRubricCriterion,
+    MatcherConfig,
+    TestCaseMetadata,
+)
+from app.models.test_suite import TestCase, TestCaseVersion, TestSuite, TestSuiteVersion
+from app.repositories.suites import TestCaseRepository, TestSuiteRepository
 
 SUITE_SCHEMA = {
     "type": "object",
@@ -137,7 +142,7 @@ class SuiteService:
         matcher_config = None
         rubric_config = None
 
-        if "matcher" in expected_behavior and expected_behavior["matcher"]:
+        if expected_behavior.get("matcher"):
             m = expected_behavior["matcher"]
             matcher_config = MatcherConfig(
                 type=ExpectedBehaviorType(m["type"]),
@@ -149,7 +154,7 @@ class SuiteService:
                 required_fields=m.get("required_fields"),
             )
 
-        if "rubric" in expected_behavior and expected_behavior["rubric"]:
+        if expected_behavior.get("rubric"):
             r = expected_behavior["rubric"]
             criteria = [
                 LLMRubricCriterion(
@@ -211,7 +216,7 @@ class SuiteService:
             raise ValidationError(f"Invalid JSON: {e}")
         return await self.create_suite(data, user_id)
 
-    async def get_suite_with_cases(self, suite_id: UUID) -> Optional[TestSuite]:
+    async def get_suite_with_cases(self, suite_id: UUID) -> TestSuite | None:
         suite = await self.suite_repo.get(suite_id)
         if not suite:
             return None
@@ -240,7 +245,7 @@ class SuiteService:
                 matcher_config = None
                 rubric_config = None
 
-                if "matcher" in expected_behavior and expected_behavior["matcher"]:
+                if expected_behavior.get("matcher"):
                     m = expected_behavior["matcher"]
                     matcher_config = MatcherConfig(
                         type=ExpectedBehaviorType(m["type"]),
@@ -252,7 +257,7 @@ class SuiteService:
                         required_fields=m.get("required_fields"),
                     )
 
-                if "rubric" in expected_behavior and expected_behavior["rubric"]:
+                if expected_behavior.get("rubric"):
                     r = expected_behavior["rubric"]
                     criteria = [
                         LLMRubricCriterion(

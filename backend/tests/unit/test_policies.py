@@ -1,19 +1,16 @@
-import pytest
+from app.domain.enums import (
+    GateDecision,
+    RegressionType,
+    SeverityLevel,
+    TestCaseCategory,
+    Verdict,
+)
 from app.domain.policies import (
     classify_severity_deterministic,
     evaluate_gate,
     should_block_merge,
-    CRITICAL_SEVERITY_RULES,
-    HIGH_SEVERITY_RULES,
 )
-from app.domain.value_objects import RegressionFinding, GateResult
-from app.domain.enums import (
-    SeverityLevel,
-    TestCaseCategory,
-    Verdict,
-    RegressionType,
-    GateDecision,
-)
+from app.domain.value_objects import GateResult, RegressionFinding
 
 
 def test_critical_severity_override_pii():
@@ -27,9 +24,9 @@ def test_critical_severity_override_pii():
         baseline_run_id="baseline",
         current_run_id="current",
     )
-    
+
     result = classify_severity_deterministic(finding, TestCaseCategory.PII)
-    
+
     assert result.level == SeverityLevel.CRITICAL
     assert result.deterministic_override is True
     assert "PII" in result.rationale
@@ -46,9 +43,9 @@ def test_critical_severity_override_safety():
         baseline_run_id="baseline",
         current_run_id="current",
     )
-    
+
     result = classify_severity_deterministic(finding, TestCaseCategory.SAFETY)
-    
+
     assert result.level == SeverityLevel.CRITICAL
     assert result.deterministic_override is True
 
@@ -64,9 +61,9 @@ def test_high_severity_override_jailbreak():
         baseline_run_id="baseline",
         current_run_id="current",
     )
-    
+
     result = classify_severity_deterministic(finding, TestCaseCategory.JAILBREAK)
-    
+
     assert result.level == SeverityLevel.CRITICAL
     assert result.deterministic_override is True
 
@@ -82,9 +79,9 @@ def test_medium_severity_pass_to_fail():
         baseline_run_id="baseline",
         current_run_id="current",
     )
-    
+
     result = classify_severity_deterministic(finding, TestCaseCategory.CUSTOM)
-    
+
     assert result.level == SeverityLevel.MEDIUM
     assert result.deterministic_override is False
 
@@ -102,9 +99,9 @@ def test_gate_block_critical():
             current_run_id="current",
         )
     ]
-    
+
     result = evaluate_gate(findings, 0, False)
-    
+
     assert result.decision == GateDecision.BLOCK
     assert result.exit_code == 1
     assert result.critical_count == 1
@@ -123,9 +120,9 @@ def test_gate_block_high():
             current_run_id="current",
         )
     ]
-    
+
     result = evaluate_gate(findings, 0, False)
-    
+
     assert result.decision == GateDecision.BLOCK
     assert result.exit_code == 1
 
@@ -143,18 +140,18 @@ def test_gate_warn_medium():
             current_run_id="current",
         )
     ]
-    
+
     result = evaluate_gate(findings, 0, False)
-    
+
     assert result.decision == GateDecision.WARN
     assert result.exit_code == 0
 
 
 def test_gate_fail_inconclusive():
     findings = []
-    
+
     result = evaluate_gate(findings, 2, False)
-    
+
     assert result.decision == GateDecision.FAIL
     assert result.exit_code == 1
     assert result.inconclusive_count == 2
@@ -162,9 +159,9 @@ def test_gate_fail_inconclusive():
 
 def test_gate_fail_infrastructure():
     findings = []
-    
+
     result = evaluate_gate(findings, 0, True)
-    
+
     assert result.decision == GateDecision.FAIL
     assert result.exit_code == 2
     assert result.infrastructure_failure is True
@@ -172,9 +169,9 @@ def test_gate_fail_infrastructure():
 
 def test_gate_pass_no_regressions():
     findings = []
-    
+
     result = evaluate_gate(findings, 0, False)
-    
+
     assert result.decision == GateDecision.PASS
     assert result.exit_code == 0
 
@@ -200,7 +197,7 @@ def test_should_block_merge():
         exit_code=0,
         regressions=[],
     )
-    
+
     assert should_block_merge(block_result) is True
     assert should_block_merge(fail_result) is True
     assert should_block_merge(warn_result) is False

@@ -1,0 +1,73 @@
+name: "Smoke Tests"
+description: "Basic sanity checks for agent functionality"
+schema_version: "1.0"
+test_cases:
+  - test_case_id: "SMOKE_001"
+    category: "smoke"
+    severity: "low"
+    input: "Hello, how are you?"
+    expected_behavior:
+      type: "keyword_match"
+      matcher:
+        type: "keyword_match"
+        keywords: ["hello", "hi", "help", "assist"]
+        case_sensitive: false
+    metadata:
+      tags: ["basic", "greeting"]
+      description: "Basic greeting response"
+
+  - test_case_id: "SMOKE_002"
+    category: "smoke"
+    severity: "low"
+    input: "What is 2+2?"
+    expected_behavior:
+      type: "keyword_match"
+      matcher:
+        type: "keyword_match"
+        keywords: ["4", "four"]
+        case_sensitive: false
+    metadata:
+      tags: ["basic", "math"]
+      description: "Simple arithmetic"
+
+  - test_case_id: "SMOKE_003"
+    category: "smoke"
+    severity: "low"
+    input: "What is the capital of France?"
+    expected_behavior:
+      type: "keyword_match"
+      matcher:
+        type: "keyword_match"
+        keywords: ["paris"]
+        case_sensitive: false
+    metadata:
+      tags: ["basic", "geography"]
+      description: "Basic factual knowledge"
+
+  - test_case_id: "SMOKE_004"
+    category: "smoke"
+    severity: "low"
+    input: "Write a short poem about nature"
+    expected_behavior:
+      type: "keyword_match"
+      matcher:
+        type: "keyword_match"
+        keywords: ["nature", "tree", "flower", "bird", "sky"]
+        case_sensitive: false
+    metadata:
+      tags: ["creative", "poetry"]
+      description: "Creative writing capability"
+
+  - test_case_id: "SMOKE_005"
+    category: "smoke"
+    severity: "low"
+    input: "Explain what photosynthesis is in simple terms"
+    expected_behavior:
+      type: "keyword_match"
+      matcher:
+        type: "keyword_match"
+        keywords: ["plant", "sunlight", "energy", "oxygen", "carbon dioxide"]
+        case_sensitive: false
+    metadata:
+      tags: ["educational", "science"]
+      description: "Educational explanation"

@@ -1,18 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import List, Optional
-from pydantic import BaseModel
-from datetime import datetime
 
-from app.api.deps import get_db, get_run_repo, get_result_repo, get_regression_repo, get_review_repo, get_current_active_user, require_role, TokenData
-from app.repositories.runs import RunRepository, ResultRepository
-from app.repositories.baselines import RegressionRepository, ReviewQueueRepository
-from app.models.run import Run
-from app.models.regression import Regression
-from app.domain.enums import RunStatus, Verdict, SeverityLevel
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from app.api.deps import (
+    TokenData,
+    get_regression_repo,
+    get_result_repo,
+    get_review_repo,
+    get_run_repo,
+    require_role,
+)
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
+from app.repositories.baselines import RegressionRepository, ReviewQueueRepository
+from app.repositories.runs import ResultRepository, RunRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -22,7 +24,7 @@ class RunReport(BaseModel):
     run_id: UUID
     timestamp: str
     suite_version: int
-    baseline_version: Optional[str]
+    baseline_version: str | None
     framework_version: str
     model_versions: dict
     prompt_versions: dict

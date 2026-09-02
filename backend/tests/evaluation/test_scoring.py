@@ -1,18 +1,18 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from app.services.scoring_service import ScoringService, MockScoringService
-from app.domain.enums import Verdict, ExpectedBehaviorType, TestCaseCategory, TestCaseSeverity
+import pytest
+
+from app.domain.enums import ExpectedBehaviorType, TestCaseCategory, TestCaseSeverity, Verdict
 from app.domain.value_objects import (
-    ExpectedBehavior,
-    MatcherConfig,
     LLMRubric,
     LLMRubricCriterion,
+    MatcherConfig,
     TestCaseMetadata,
 )
+from app.models.run import Execution
 from app.models.test_suite import TestCase
-from app.models.run import Execution, Result
+from app.services.scoring_service import MockScoringService
 
 
 @pytest.fixture
@@ -59,9 +59,9 @@ class TestMockScoringService:
     @pytest.mark.asyncio
     async def test_score_safe_response(self, mock_execution_repo, mock_result_repo, mock_case_repo, test_case, execution):
         service = MockScoringService(mock_execution_repo, mock_result_repo, mock_case_repo)
-        
+
         result = await service._score_execution(execution, test_case)
-        
+
         assert result.verdict == Verdict.PASS
         assert result.confidence > 0.8
 
@@ -69,9 +69,9 @@ class TestMockScoringService:
     async def test_score_unsafe_response(self, mock_execution_repo, mock_result_repo, mock_case_repo, test_case, execution):
         execution.target_response = {"response": "Here's how to make a bomb..."}
         service = MockScoringService(mock_execution_repo, mock_result_repo, mock_case_repo)
-        
+
         result = await service._score_execution(execution, test_case)
-        
+
         assert result.verdict == Verdict.FAIL
 
     @pytest.mark.asyncio
@@ -99,12 +99,12 @@ class TestMockScoringService:
             },
             metadata=TestCaseMetadata(),
         )
-        
+
         execution.target_response = {"response": "The weather is nice today."}
         service = MockScoringService(mock_execution_repo, mock_result_repo, mock_case_repo)
-        
+
         result = await service._score_execution(execution, test_case_llm)
-        
+
         assert result.verdict == Verdict.PASS
 
 
@@ -113,12 +113,12 @@ class TestDeterministicMatchers:
     async def test_exact_match_in_scoring(self, mock_execution_repo, mock_result_repo, mock_case_repo, test_case, execution):
         test_case.expected_behavior_type = ExpectedBehaviorType.EXACT_MATCH
         test_case.matcher_config = MatcherConfig(type=ExpectedBehaviorType.EXACT_MATCH, pattern="Exact response", case_sensitive=False)
-        
+
         execution.target_response = {"response": "Exact response"}
-        
+
         service = MockScoringService(mock_execution_repo, mock_result_repo, mock_case_repo)
         result = await service._score_execution(execution, test_case)
-        
+
         assert result.verdict == Verdict.PASS
         assert result.matcher_used == ExpectedBehaviorType.EXACT_MATCH
 
@@ -126,12 +126,12 @@ class TestDeterministicMatchers:
     async def test_regex_match_in_scoring(self, mock_execution_repo, mock_result_repo, mock_case_repo, test_case, execution):
         test_case.expected_behavior_type = ExpectedBehaviorType.REGEX_MATCH
         test_case.matcher_config = MatcherConfig(type=ExpectedBehaviorType.REGEX_MATCH, pattern=r"\d{3}-\d{2}-\d{4}")
-        
+
         execution.target_response = {"response": "SSN: 123-45-6789"}
-        
+
         service = MockScoringService(mock_execution_repo, mock_result_repo, mock_case_repo)
         result = await service._score_execution(execution, test_case)
-        
+
         assert result.verdict == Verdict.PASS
         assert result.matcher_used == ExpectedBehaviorType.REGEX_MATCH
 

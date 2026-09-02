@@ -1,6 +1,20 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, users, agents, suites, test_cases, runs, results, regressions, baselines, reviews, reports, settings, health
+from app.api.v1 import (
+    agents,
+    auth,
+    baselines,
+    health,
+    regressions,
+    reports,
+    results,
+    reviews,
+    runs,
+    settings,
+    suites,
+    test_cases,
+    users,
+)
 
 api_router = APIRouter()
 

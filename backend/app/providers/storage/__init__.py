@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import BinaryIO, Optional
+
 import boto3
 from botocore.config import Config
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -123,8 +125,7 @@ class StorageProviderFactory:
     def create_provider(provider_type: str = "s3") -> StorageProvider:
         if provider_type == "s3":
             return S3StorageProvider()
-        elif provider_type == "local" or settings.EVAL_MODE == "local":
+        if provider_type == "local" or settings.EVAL_MODE == "local":
             return LocalStorageProvider()
-        else:
-            logger.warning("unknown_storage_provider", provider=provider_type)
-            return LocalStorageProvider()
+        logger.warning("unknown_storage_provider", provider=provider_type)
+        return LocalStorageProvider()

@@ -1,13 +1,13 @@
-from typing import List, Tuple
+
 from app.domain.enums import Verdict
-from app.domain.value_objects import MatcherConfig, EvidenceItem
+from app.domain.value_objects import EvidenceItem, MatcherConfig
 from app.evaluation.matchers.base import BaseMatcher
 
 
 class KeywordMatcher(BaseMatcher):
     async def match(
         self, response: str, config: Optional[MatcherConfig]
-    ) -> Tuple[Verdict, float, List[EvidenceItem]]:
+    ) -> tuple[Verdict, float, list[EvidenceItem]]:
         if not config or not config.keywords:
             return Verdict.INCONCLUSIVE, 0.0, [
                 self._create_evidence("keyword_matcher", "No keywords configured", False)

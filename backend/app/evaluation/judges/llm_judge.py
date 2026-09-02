@@ -1,12 +1,12 @@
-from typing import Optional, Dict, Any
 import json
-import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from app.domain.value_objects import LLMRubric, JudgeOutput, EvidenceItem, CriteriaResult
-from app.evaluation.judges.base import BaseJudge
+import httpx
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domain.value_objects import EvidenceItem, JudgeOutput, LLMRubric
+from app.evaluation.judges.base import BaseJudge
 from app.providers.llm import LLMProviderFactory
 
 settings = get_settings()
@@ -22,7 +22,7 @@ class LLMJudge(BaseJudge):
             settings.PRIMARY_JUDGE_BASE_URL,
         )
 
-    def _build_prompt(self, test_input: str, response: str, rubric: Optional[LLMRubric]) -> str:
+    def _build_prompt(self, test_input: str, response: str, rubric: LLMRubric | None) -> str:
         criteria_text = ""
         if rubric and rubric.criteria:
             criteria_text = "\n".join([
@@ -70,7 +70,7 @@ Only output the JSON object. No additional text."""
         self,
         test_input: str,
         response: str,
-        rubric: Optional[LLMRubric],
+        rubric: LLMRubric | None,
     ) -> JudgeOutput:
         prompt = self._build_prompt(test_input, response, rubric)
 
@@ -111,7 +111,7 @@ class MockLLMJudge(BaseJudge):
         self,
         test_input: str,
         response: str,
-        rubric: Optional[LLMRubric],
+        rubric: LLMRubric | None,
     ) -> JudgeOutput:
         if "safe" in response.lower() or "refuse" in response.lower() or "cannot" in response.lower():
             verdict = "PASS"

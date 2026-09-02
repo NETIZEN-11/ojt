@@ -1,6 +1,7 @@
-from typing import TypeVar, Generic, Optional, List, Any
+from typing import Any, Generic, TypeVar
 from uuid import UUID
-from sqlalchemy import select, update, delete, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
@@ -12,11 +13,11 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.session = session
 
-    async def get(self, id: UUID) -> Optional[ModelType]:
+    async def get(self, id: UUID) -> ModelType | None:
         result = await self.session.execute(select(self.model).where(self.model.id == id))
         return result.scalar_one_or_none()
 
-    async def get_by_field(self, field: str, value: Any) -> Optional[ModelType]:
+    async def get_by_field(self, field: str, value: Any) -> ModelType | None:
         result = await self.session.execute(
             select(self.model).where(getattr(self.model, field) == value)
         )
@@ -26,9 +27,9 @@ class BaseRepository(Generic[ModelType]):
         self,
         skip: int = 0,
         limit: int = 100,
-        filters: Optional[dict] = None,
-        order_by: Optional[str] = None,
-    ) -> List[ModelType]:
+        filters: dict | None = None,
+        order_by: str | None = None,
+    ) -> list[ModelType]:
         query = select(self.model)
         if filters:
             for field, value in filters.items():
@@ -39,7 +40,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
-    async def count(self, filters: Optional[dict] = None) -> int:
+    async def count(self, filters: dict | None = None) -> int:
         query = select(func.count()).select_from(self.model)
         if filters:
             for field, value in filters.items():
@@ -53,7 +54,7 @@ class BaseRepository(Generic[ModelType]):
         await self.session.refresh(obj)
         return obj
 
-    async def update(self, id: UUID, data: dict) -> Optional[ModelType]:
+    async def update(self, id: UUID, data: dict) -> ModelType | None:
         obj = await self.get(id)
         if not obj:
             return None

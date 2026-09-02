@@ -1,16 +1,16 @@
-from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
 
-from app.repositories.runs import ResultRepository
-from app.repositories.baselines import BaselineRepository, BaselineItemRepository, RegressionRepository
-from app.models.run import Result
-from app.models.baseline import BaselineItem
-from app.models.regression import Regression
-from app.domain.enums import Verdict, RegressionType, SeverityLevel
-from app.domain.value_objects import RegressionFinding, EvidenceItem
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
+from app.domain.enums import RegressionType, SeverityLevel, Verdict
+from app.domain.value_objects import EvidenceItem, RegressionFinding
+from app.models.regression import Regression
+from app.repositories.baselines import (
+    BaselineItemRepository,
+    BaselineRepository,
+    RegressionRepository,
+)
+from app.repositories.runs import ResultRepository
 
 logger = get_logger(__name__)
 
@@ -28,7 +28,7 @@ class RegressionDetector:
         self.baseline_item_repo = baseline_item_repo
         self.regression_repo = regression_repo
 
-    async def detect_regressions(self, run_id: UUID, baseline_id: UUID) -> List[RegressionFinding]:
+    async def detect_regressions(self, run_id: UUID, baseline_id: UUID) -> list[RegressionFinding]:
         baseline = await self.baseline_repo.get(baseline_id)
         if not baseline:
             raise NotFoundError("Baseline", str(baseline_id))
@@ -90,13 +90,13 @@ class RegressionDetector:
     def _classify_regression(self, previous: Verdict, current: Verdict) -> RegressionType:
         if previous == Verdict.PASS and current == Verdict.FAIL:
             return RegressionType.PASS_TO_FAIL
-        elif previous == Verdict.PASS and current == Verdict.INCONCLUSIVE:
+        if previous == Verdict.PASS and current == Verdict.INCONCLUSIVE:
             return RegressionType.PASS_TO_INCONCLUSIVE
-        elif previous == Verdict.FAIL and current == Verdict.FAIL:
+        if previous == Verdict.FAIL and current == Verdict.FAIL:
             return RegressionType.FAIL_TO_FAIL
-        elif previous == Verdict.FAIL and current == Verdict.PASS:
+        if previous == Verdict.FAIL and current == Verdict.PASS:
             return RegressionType.FAIL_TO_PASS
-        elif previous == Verdict.INCONCLUSIVE and current == Verdict.FAIL:
+        if previous == Verdict.INCONCLUSIVE and current == Verdict.FAIL:
             return RegressionType.INCONCLUSIVE_TO_FAIL
         return RegressionType.NEW_FAILURE
 
@@ -105,13 +105,9 @@ class RegressionDetector:
     ) -> SeverityLevel:
         if regression_type == RegressionType.PASS_TO_FAIL:
             return SeverityLevel.HIGH
-        elif regression_type == RegressionType.PASS_TO_INCONCLUSIVE:
+        if regression_type == RegressionType.PASS_TO_INCONCLUSIVE or regression_type == RegressionType.INCONCLUSIVE_TO_FAIL:
             return SeverityLevel.MEDIUM
-        elif regression_type == RegressionType.INCONCLUSIVE_TO_FAIL:
-            return SeverityLevel.MEDIUM
-        elif regression_type == RegressionType.FAIL_TO_FAIL:
-            return SeverityLevel.LOW
-        elif regression_type == RegressionType.FAIL_TO_PASS:
+        if regression_type == RegressionType.FAIL_TO_FAIL or regression_type == RegressionType.FAIL_TO_PASS:
             return SeverityLevel.LOW
         return SeverityLevel.LOW
 

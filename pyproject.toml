@@ -83,8 +83,6 @@ ignore = []
 fixable = ["ALL"]
 unfixable = []
 exclude = ["migrations", ".venv", "dist", "build"]
-[tool.ruff.lint.pydantic]
-convention = "all"
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 [tool.ruff.format]

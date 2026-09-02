@@ -1,20 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 from datetime import datetime
-from typing import List, Optional, Union
+from uuid import UUID
+
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_run_repo, get_execution_repo, get_result_repo, get_agent_repo, get_suite_repo, get_baseline_repo, get_current_active_user, require_role, TokenData
-from app.repositories.runs import RunRepository, ExecutionRepository, ResultRepository
-from app.repositories.agents import TargetAgentRepository
-from app.repositories.suites import TestSuiteRepository
-from app.repositories.baselines import BaselineRepository
-from app.workers.evaluation_tasks import run_evaluation
-from app.models.run import Run
-from app.domain.enums import RunStatus
-from app.core.exceptions import NotFoundError, ConflictError
+from app.api.deps import (
+    TokenData,
+    get_agent_repo,
+    get_baseline_repo,
+    get_execution_repo,
+    get_result_repo,
+    get_run_repo,
+    get_suite_repo,
+    require_role,
+)
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.logging import get_logger
+from app.domain.enums import RunStatus
+from app.models.run import Run
+from app.repositories.agents import TargetAgentRepository
+from app.repositories.baselines import BaselineRepository
+from app.repositories.runs import ExecutionRepository, ResultRepository, RunRepository
+from app.repositories.suites import TestSuiteRepository
+from app.workers.evaluation_tasks import run_evaluation
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -23,16 +31,16 @@ logger = get_logger(__name__)
 class RunCreate(BaseModel):
     target_agent_id: UUID
     suite_id: UUID
-    suite_version: Optional[int] = None
-    baseline_id: Optional[UUID] = None
+    suite_version: int | None = None
+    baseline_id: UUID | None = None
 
 
 class RunResponse(BaseModel):
     id: UUID
     target_agent_id: UUID
     suite_id: UUID
-    suite_version: Optional[int] = 1
-    baseline_id: Optional[UUID] = None
+    suite_version: int | None = 1
+    baseline_id: UUID | None = None
     status: RunStatus
     framework_version: str = "1.0.0"
     total_tests: int = 0
@@ -46,22 +54,22 @@ class RunResponse(BaseModel):
     low_count: int = 0
     total_cost_usd: float = 0.0
     total_latency_ms: int = 0
-    started_at: Optional[Union[datetime, str]] = None
-    completed_at: Optional[Union[datetime, str]] = None
-    created_at: Union[datetime, str]
-    error_message: Optional[str] = None
+    started_at: datetime | str | None = None
+    completed_at: datetime | str | None = None
+    created_at: datetime | str
+    error_message: str | None = None
 
     class Config:
         from_attributes = True
 
 
-@router.get("/", response_model=List[RunResponse])
+@router.get("/", response_model=list[RunResponse])
 async def list_runs(
     skip: int = 0,
     limit: int = 100,
-    target_agent_id: Optional[UUID] = None,
-    suite_id: Optional[UUID] = None,
-    status: Optional[RunStatus] = None,
+    target_agent_id: UUID | None = None,
+    suite_id: UUID | None = None,
+    status: RunStatus | None = None,
     run_repo: RunRepository = Depends(get_run_repo),
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
 ):

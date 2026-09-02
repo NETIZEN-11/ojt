@@ -18,17 +18,16 @@ COPY pyproject.toml uv.lock* ./
 RUN pip install --no-cache-dir uv && \
     uv pip install --system --no-cache -r pyproject.toml
 
-FROM base as development
+COPY backend ./backend
+COPY evaluation ./evaluation
 
-COPY . .
+FROM base as development
 
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 FROM base as production
-
-COPY . .
 
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app

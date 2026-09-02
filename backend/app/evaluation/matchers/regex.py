@@ -1,18 +1,18 @@
-import re
 import asyncio
-from typing import List, Tuple, Optional
-from app.domain.enums import Verdict
-from app.domain.value_objects import MatcherConfig, EvidenceItem
-from app.evaluation.matchers.base import BaseMatcher
+import re
+
 from app.core.config import get_settings
+from app.domain.enums import Verdict
+from app.domain.value_objects import EvidenceItem, MatcherConfig
+from app.evaluation.matchers.base import BaseMatcher
 
 settings = get_settings()
 
 
 class RegexMatcher(BaseMatcher):
     async def match(
-        self, response: str, config: Optional[MatcherConfig]
-    ) -> Tuple[Verdict, float, List[EvidenceItem]]:
+        self, response: str, config: MatcherConfig | None
+    ) -> tuple[Verdict, float, list[EvidenceItem]]:
         if not config or not config.pattern:
             return Verdict.INCONCLUSIVE, 0.0, [
                 self._create_evidence("regex_matcher", "No pattern configured", False)
@@ -30,7 +30,7 @@ class RegexMatcher(BaseMatcher):
                 asyncio.to_thread(pattern.search, response),
                 timeout=config.regex_timeout_ms / 1000 if config.regex_timeout_ms else settings.REGEX_MATCH_TIMEOUT_MS / 1000,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return Verdict.INCONCLUSIVE, 0.0, [
                 self._create_evidence("regex_matcher", f"Regex timeout after {config.regex_timeout_ms or settings.REGEX_MATCH_TIMEOUT_MS}ms", False)
             ]

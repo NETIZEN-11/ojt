@@ -1,6 +1,9 @@
 import sys
+from datetime import UTC
+
 import structlog
 from structlog.types import EventDict, Processor
+
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -12,8 +15,8 @@ def add_severity_level(logger: structlog.BoundLogger, method_name: str, event_di
 
 
 def add_timestamp(logger: structlog.BoundLogger, method_name: str, event_dict: EventDict) -> EventDict:
-    from datetime import datetime, timezone
-    event_dict["timestamp"] = datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+    event_dict["timestamp"] = datetime.now(UTC).isoformat()
     return event_dict
 
 

@@ -1,27 +1,25 @@
-from typing import Optional, List, Dict, Any
-from uuid import UUID, uuid4
 from datetime import datetime
-import asyncio
-import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any
+from uuid import UUID
 
-from app.repositories.runs import RunRepository, ExecutionRepository, ResultRepository
-from app.repositories.agents import TargetAgentRepository
-from app.repositories.suites import TestCaseRepository
-from app.models.run import Run, Execution, Result
-from app.models.target_agent import TargetAgent
-from app.models.test_suite import TestCase
-from app.domain.enums import RunStatus, ExecutionStatus, Verdict, ExpectedBehaviorType
-from app.domain.value_objects import EvidenceItem
+import httpx
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from app.core.config import get_settings
 from app.core.exceptions import (
+    PipelineError,
     TargetAgentError,
     TargetAgentTimeoutError,
     TargetAgentUnavailableError,
-    PipelineError,
-    EvaluationFailureError,
 )
-from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domain.enums import ExecutionStatus, RunStatus
+from app.models.run import Execution, Run
+from app.models.target_agent import TargetAgent
+from app.models.test_suite import TestCase
+from app.repositories.agents import TargetAgentRepository
+from app.repositories.runs import ExecutionRepository, ResultRepository, RunRepository
+from app.repositories.suites import TestCaseRepository
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -93,7 +91,7 @@ class ExecutionService:
     )
     async def _call_target_agent(
         self, agent: TargetAgent, test_case: TestCase, run: Run
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         timeout = httpx.Timeout(agent.timeout_seconds, connect=5.0)
         headers = {
             "Content-Type": "application/json",
@@ -124,7 +122,7 @@ class ExecutionService:
 
         return self._extract_response(agent, response.json())
 
-    def _build_request(self, agent: TargetAgent, test_case: TestCase) -> Dict[str, Any]:
+    def _build_request(self, agent: TargetAgent, test_case: TestCase) -> dict[str, Any]:
         template = agent.request_template
         if not template:
             return {"input": test_case.input}
@@ -135,15 +133,15 @@ class ExecutionService:
         def replace_variables(obj: Any) -> Any:
             if isinstance(obj, str):
                 return obj.replace("{input}", test_case.input).replace("{test_case_id}", test_case.test_case_id)
-            elif isinstance(obj, dict):
+            if isinstance(obj, dict):
                 return {k: replace_variables(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
+            if isinstance(obj, list):
                 return [replace_variables(item) for item in obj]
             return obj
 
         return replace_variables(request)
 
-    def _extract_response(self, agent: TargetAgent, response: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_response(self, agent: TargetAgent, response: dict[str, Any]) -> dict[str, Any]:
         extraction = agent.response_extraction
         if not extraction:
             return response

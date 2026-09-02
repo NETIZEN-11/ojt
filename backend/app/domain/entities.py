@@ -1,30 +1,25 @@
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
+
 from app.domain.enums import (
-    TestCaseCategory,
-    TestCaseSeverity,
-    ExpectedBehaviorType,
-    Verdict,
-    RunStatus,
+    AgentStatus,
     ExecutionStatus,
-    SeverityLevel,
+    ExpectedBehaviorType,
+    PromptVersionStatus,
     ReviewLabel,
     ReviewStatus,
-    GateDecision,
-    AgentStatus,
-    PromptVersionStatus,
+    RunStatus,
+    SeverityLevel,
+    TestCaseCategory,
+    TestCaseSeverity,
+    Verdict,
 )
 from app.domain.value_objects import (
-    MatcherConfig,
     ExpectedBehavior,
     TestCaseMetadata,
-    ScoringResult,
-    RegressionFinding,
-    SeverityClassification,
-    GateResult,
-    CostBreakdown,
 )
 
 
@@ -40,39 +35,39 @@ class TestCase(BaseModel):
     metadata: TestCaseMetadata = Field(default_factory=TestCaseMetadata)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: Optional[UUID] = None
+    created_by: UUID | None = None
     is_active: bool = True
 
 
 class TestSuite(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     version: int = 1
-    test_cases: List[TestCase] = []
+    test_cases: list[TestCase] = []
     schema_version: str = "1.0"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: Optional[UUID] = None
+    created_by: UUID | None = None
     is_active: bool = True
 
 
 class TargetAgent(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     endpoint_url: str
-    auth_config: Dict[str, Any] = {}
-    request_template: Dict[str, Any] = {}
-    response_extraction: Dict[str, Any] = {}
+    auth_config: dict[str, Any] = {}
+    request_template: dict[str, Any] = {}
+    response_extraction: dict[str, Any] = {}
     timeout_seconds: int = 30
     max_retries: int = 3
     allowed: bool = True
     status: AgentStatus = AgentStatus.ACTIVE
-    health_check_url: Optional[str] = None
+    health_check_url: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: Optional[UUID] = None
+    created_by: UUID | None = None
 
 
 class Run(BaseModel):
@@ -80,14 +75,14 @@ class Run(BaseModel):
     target_agent_id: UUID
     suite_id: UUID
     suite_version: int
-    baseline_id: Optional[UUID] = None
+    baseline_id: UUID | None = None
     status: RunStatus = RunStatus.QUEUED
     framework_version: str = "1.0.0"
-    model_versions: Dict[str, str] = {}
-    prompt_versions: Dict[str, str] = {}
-    config_snapshot: Dict[str, Any] = {}
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    model_versions: dict[str, str] = {}
+    prompt_versions: dict[str, str] = {}
+    config_snapshot: dict[str, Any] = {}
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     total_tests: int = 0
     passed_count: int = 0
     failed_count: int = 0
@@ -99,10 +94,10 @@ class Run(BaseModel):
     low_count: int = 0
     total_cost_usd: float = 0.0
     total_latency_ms: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: Optional[UUID] = None
+    created_by: UUID | None = None
 
 
 class Execution(BaseModel):
@@ -110,13 +105,13 @@ class Execution(BaseModel):
     run_id: UUID
     test_case_id: UUID
     status: ExecutionStatus = ExecutionStatus.QUEUED
-    target_request: Optional[Dict[str, Any]] = None
-    target_response: Optional[Dict[str, Any]] = None
-    tool_calls: List[Dict[str, Any]] = []
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    target_request: dict[str, Any] | None = None
+    target_response: dict[str, Any] | None = None
+    tool_calls: list[dict[str, Any]] = []
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     latency_ms: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     retry_count: int = 0
 
 
@@ -127,15 +122,15 @@ class Result(BaseModel):
     test_case_id: UUID
     verdict: Verdict
     confidence: float
-    matcher_used: Optional[ExpectedBehaviorType] = None
-    judge_output: Optional[Dict[str, Any]] = None
-    second_judge_output: Optional[Dict[str, Any]] = None
+    matcher_used: ExpectedBehaviorType | None = None
+    judge_output: dict[str, Any] | None = None
+    second_judge_output: dict[str, Any] | None = None
     judge_agreement: bool = True
-    evidence: List[Dict[str, Any]] = []
+    evidence: list[dict[str, Any]] = []
     execution_time_ms: int
     tokens_used: int = 0
     estimated_cost: float = 0.0
-    errors: List[str] = []
+    errors: list[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -145,10 +140,10 @@ class Baseline(BaseModel):
     suite_version: int
     run_id: UUID
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     framework_version: str
-    model_versions: Dict[str, str]
-    prompt_versions: Dict[str, str]
+    model_versions: dict[str, str]
+    prompt_versions: dict[str, str]
     approved_by: UUID
     approved_at: datetime
     is_active: bool = True
@@ -161,7 +156,7 @@ class BaselineItem(BaseModel):
     test_case_id: UUID
     verdict: Verdict
     confidence: float
-    evidence: List[Dict[str, Any]] = []
+    evidence: list[dict[str, Any]] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -174,10 +169,10 @@ class Regression(BaseModel):
     current_verdict: Verdict
     regression_type: str
     severity: SeverityLevel
-    evidence: List[Dict[str, Any]] = []
+    evidence: list[dict[str, Any]] = []
     acknowledged: bool = False
-    acknowledged_by: Optional[UUID] = None
-    acknowledged_at: Optional[datetime] = None
+    acknowledged_by: UUID | None = None
+    acknowledged_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -187,7 +182,7 @@ class SeverityFinding(BaseModel):
     level: SeverityLevel
     rationale: str
     deterministic_override: bool = False
-    categories: List[str] = []
+    categories: list[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -199,12 +194,12 @@ class ReviewQueue(BaseModel):
     confidence: float
     category: str
     status: ReviewStatus = ReviewStatus.PENDING
-    assigned_to: Optional[UUID] = None
-    label: Optional[ReviewLabel] = None
-    reviewer_notes: Optional[str] = None
+    assigned_to: UUID | None = None
+    label: ReviewLabel | None = None
+    reviewer_notes: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
 
 class ReviewLabelRecord(BaseModel):
@@ -218,13 +213,13 @@ class ReviewLabelRecord(BaseModel):
 
 class AuditLog(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    user_id: Optional[UUID] = None
+    user_id: UUID | None = None
     action: str
     resource_type: str
-    resource_id: Optional[UUID] = None
-    details: Dict[str, Any] = {}
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    resource_id: UUID | None = None
+    details: dict[str, Any] = {}
+    ip_address: str | None = None
+    user_agent: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -234,7 +229,7 @@ class ModelConfig(BaseModel):
     model_name: str
     model_version: str
     role: str
-    config: Dict[str, Any] = {}
+    config: dict[str, Any] = {}
     is_active: bool = True
     is_default: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -246,23 +241,23 @@ class PromptVersion(BaseModel):
     prompt_type: str
     version: str
     content: str
-    variables: List[str] = []
+    variables: list[str] = []
     status: PromptVersionStatus = PromptVersionStatus.DRAFT
     created_by: UUID
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    promoted_at: Optional[datetime] = None
-    promoted_by: Optional[UUID] = None
+    promoted_at: datetime | None = None
+    promoted_by: UUID | None = None
 
 
 class AttackTaxonomy(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     category: str
-    subcategory: Optional[str] = None
+    subcategory: str | None = None
     technique: str
     description: str
-    examples: List[str] = []
+    examples: list[str] = []
     severity: TestCaseSeverity
-    tags: List[str] = []
+    tags: list[str] = []
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -272,8 +267,8 @@ class EmbeddingDocument(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     collection: str
     content: str
-    metadata: Dict[str, Any] = {}
-    embedding: Optional[List[float]] = None
+    metadata: dict[str, Any] = {}
+    embedding: list[float] | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -283,7 +278,7 @@ class FeatureFlag(BaseModel):
     enabled: bool
     description: str
     rollout_percentage: int = 100
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -294,6 +289,6 @@ class Notification(BaseModel):
     type: str
     title: str
     message: str
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
     read: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)

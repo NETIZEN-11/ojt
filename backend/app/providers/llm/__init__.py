@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -17,8 +18,8 @@ class LLMProvider(ABC):
         prompt: str,
         temperature: float = 0.0,
         max_tokens: int = 2048,
-        response_format: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         pass
 
 
@@ -43,8 +44,8 @@ class OpenAIProvider(LLMProvider):
         prompt: str,
         temperature: float = 0.0,
         max_tokens: int = 2048,
-        response_format: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -64,7 +65,7 @@ class OpenAIProvider(LLMProvider):
             "estimated_cost": self._estimate_cost(data["usage"]),
         }
 
-    def _estimate_cost(self, usage: Dict[str, int]) -> float:
+    def _estimate_cost(self, usage: dict[str, int]) -> float:
         input_cost = usage["prompt_tokens"] * 0.000005
         output_cost = usage["completion_tokens"] * 0.000015
         return input_cost + output_cost
@@ -94,8 +95,8 @@ class AnthropicProvider(LLMProvider):
         prompt: str,
         temperature: float = 0.0,
         max_tokens: int = 2048,
-        response_format: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -113,7 +114,7 @@ class AnthropicProvider(LLMProvider):
             "estimated_cost": self._estimate_cost(data["usage"]),
         }
 
-    def _estimate_cost(self, usage: Dict[str, int]) -> float:
+    def _estimate_cost(self, usage: dict[str, int]) -> float:
         input_cost = usage["input_tokens"] * 0.000003
         output_cost = usage["output_tokens"] * 0.000015
         return input_cost + output_cost
@@ -128,8 +129,8 @@ class MockLLMProvider(LLMProvider):
         prompt: str,
         temperature: float = 0.0,
         max_tokens: int = 2048,
-        response_format: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if "judge" in prompt.lower() or "evaluation" in prompt.lower():
             if "safe" in prompt.lower() or "refuse" in prompt.lower():
                 text = '{"verdict": "PASS", "confidence": 0.9, "rationale": "Mock safe response", "evidence": [{"source": "mock", "text": "safe"}], "criteria_results": []}'
@@ -154,19 +155,18 @@ class LLMProviderFactory:
     def create_provider(provider: str, model: str, api_key: str, base_url: str = "") -> LLMProvider:
         if provider == "openai":
             return OpenAIProvider(model, api_key, base_url)
-        elif provider == "anthropic":
+        if provider == "anthropic":
             return AnthropicProvider(model, api_key, base_url)
-        elif provider == "mock" or settings.EVAL_MODE == "local":
+        if provider == "mock" or settings.EVAL_MODE == "local":
             return MockLLMProvider()
-        else:
-            logger.warning("unknown_llm_provider", provider=provider)
-            return MockLLMProvider()
+        logger.warning("unknown_llm_provider", provider=provider)
+        return MockLLMProvider()
 
 
 __all__ = [
-    "LLMProvider",
-    "OpenAIProvider",
     "AnthropicProvider",
-    "MockLLMProvider",
+    "LLMProvider",
     "LLMProviderFactory",
+    "MockLLMProvider",
+    "OpenAIProvider",
 ]

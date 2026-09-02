@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -12,11 +13,11 @@ logger = get_logger(__name__)
 
 class EmbeddingProvider(ABC):
     @abstractmethod
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text: str) -> list[float]:
         pass
 
     @abstractmethod
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         pass
 
 
@@ -36,7 +37,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
     )
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text: str) -> list[float]:
         response = await self.client.post(
             "/embeddings",
             json={"model": self.model, "input": text},
@@ -45,7 +46,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         data = response.json()
         return data["data"][0]["embedding"]
 
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         response = await self.client.post(
             "/embeddings",
             json={"model": self.model, "input": texts},
@@ -69,11 +70,11 @@ class AnthropicEmbeddingProvider(EmbeddingProvider):
             timeout=30.0,
         )
 
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text: str) -> list[float]:
         logger.warning("anthropic_embeddings_not_supported", model=self.model)
         return [0.0] * 1536
 
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [[0.0] * 1536 for _ in texts]
 
     async def close(self):
@@ -84,12 +85,12 @@ class MockEmbeddingProvider(EmbeddingProvider):
     def __init__(self, dimension: int = 1536):
         self.dimension = dimension
 
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text: str) -> list[float]:
         import hashlib
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
         return [(hash_val >> i & 1) * 0.01 for i in range(self.dimension)]
 
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [await self.embed(text) for text in texts]
 
 
@@ -98,19 +99,18 @@ class EmbeddingProviderFactory:
     def create_provider(provider: str, model: str, api_key: str, base_url: str = "") -> EmbeddingProvider:
         if provider == "openai":
             return OpenAIEmbeddingProvider(model, api_key, base_url)
-        elif provider == "anthropic":
+        if provider == "anthropic":
             return AnthropicEmbeddingProvider(model, api_key, base_url)
-        elif provider == "mock" or settings.EVAL_MODE == "local":
+        if provider == "mock" or settings.EVAL_MODE == "local":
             return MockEmbeddingProvider()
-        else:
-            logger.warning("unknown_embedding_provider", provider=provider)
-            return MockEmbeddingProvider()
+        logger.warning("unknown_embedding_provider", provider=provider)
+        return MockEmbeddingProvider()
 
 
 __all__ = [
-    "EmbeddingProvider",
-    "OpenAIEmbeddingProvider",
     "AnthropicEmbeddingProvider",
-    "MockEmbeddingProvider",
+    "EmbeddingProvider",
     "EmbeddingProviderFactory",
+    "MockEmbeddingProvider",
+    "OpenAIEmbeddingProvider",
 ]

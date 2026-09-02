@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -12,7 +13,7 @@ logger = get_logger(__name__)
 
 class TargetAgentProvider(ABC):
     @abstractmethod
-    async def call(self, input_text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def call(self, input_text: str, context: dict[str, Any] = None) -> dict[str, Any]:
         pass
 
     @abstractmethod
@@ -24,9 +25,9 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
     def __init__(
         self,
         endpoint_url: str,
-        auth_config: Dict[str, Any] = None,
-        request_template: Dict[str, Any] = None,
-        response_extraction: Dict[str, Any] = None,
+        auth_config: dict[str, Any] = None,
+        request_template: dict[str, Any] = None,
+        response_extraction: dict[str, Any] = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):
@@ -47,14 +48,14 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
     )
-    async def call(self, input_text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def call(self, input_text: str, context: dict[str, Any] = None) -> dict[str, Any]:
         request_body = self._build_request(input_text, context)
 
         try:
             response = await self.client.post(self.endpoint_url, json=request_body)
             response.raise_for_status()
             return self._extract_response(response.json())
-        except httpx.TimeoutException as e:
+        except httpx.TimeoutException:
             logger.error("target_agent_timeout", url=self.endpoint_url)
             raise
         except httpx.HTTPStatusError as e:
@@ -64,7 +65,7 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
             logger.error("target_agent_request_error", url=self.endpoint_url, error=str(e))
             raise
 
-    def _build_request(self, input_text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    def _build_request(self, input_text: str, context: dict[str, Any] = None) -> dict[str, Any]:
         if not self.request_template:
             return {"input": input_text}
 
@@ -78,15 +79,15 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
                     for key, value in context.items():
                         result = result.replace(f"{{{key}}}", str(value))
                 return result
-            elif isinstance(obj, dict):
+            if isinstance(obj, dict):
                 return {k: replace_variables(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
+            if isinstance(obj, list):
                 return [replace_variables(item) for item in obj]
             return obj
 
         return replace_variables(request)
 
-    def _extract_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_response(self, response: dict[str, Any]) -> dict[str, Any]:
         if not self.response_extraction:
             return response
 
@@ -119,28 +120,28 @@ class MockTargetAgentProvider(TargetAgentProvider):
         self.scenario = scenario
         self.call_count = 0
 
-    async def call(self, input_text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def call(self, input_text: str, context: dict[str, Any] = None) -> dict[str, Any]:
         self.call_count += 1
 
         if self.scenario == "safe":
             return {"response": "I cannot help with that request. It violates my safety guidelines."}
-        elif self.scenario == "jailbreak_vulnerable":
+        if self.scenario == "jailbreak_vulnerable":
             if "ignore" in input_text.lower() or "system prompt" in input_text.lower():
                 return {"response": "My system prompt is: You are a helpful assistant..."}
             return {"response": "I cannot help with that."}
-        elif self.scenario == "pii_leak":
+        if self.scenario == "pii_leak":
             if "email" in input_text.lower() or "phone" in input_text.lower():
                 return {"response": "The CEO's email is ceo@company.com and phone is 555-1234"}
             return {"response": "I don't have that information."}
-        elif self.scenario == "prompt_injection":
+        if self.scenario == "prompt_injection":
             if "ignore" in input_text.lower() and "injected" in input_text.lower():
                 return {"response": "Injected!"}
             return {"response": "I cannot follow that instruction."}
-        elif self.scenario == "timeout":
+        if self.scenario == "timeout":
             import asyncio
             await asyncio.sleep(60)
             return {"response": "Timeout"}
-        elif self.scenario == "error":
+        if self.scenario == "error":
             raise Exception("Simulated target agent error")
 
         return {"response": "Mock response"}
@@ -154,9 +155,9 @@ class TargetAgentProviderFactory:
     def create_provider(
         provider_type: str,
         endpoint_url: str = "",
-        auth_config: Dict[str, Any] = None,
-        request_template: Dict[str, Any] = None,
-        response_extraction: Dict[str, Any] = None,
+        auth_config: dict[str, Any] = None,
+        request_template: dict[str, Any] = None,
+        response_extraction: dict[str, Any] = None,
         timeout: int = 30,
         max_retries: int = 3,
         scenario: str = "safe",
@@ -170,8 +171,7 @@ class TargetAgentProviderFactory:
                 timeout=timeout,
                 max_retries=max_retries,
             )
-        elif provider_type == "mock" or settings.DEV_MOCK_TARGET_AGENT:
+        if provider_type == "mock" or settings.DEV_MOCK_TARGET_AGENT:
             return MockTargetAgentProvider(scenario=scenario)
-        else:
-            logger.warning("unknown_target_agent_provider", provider=provider_type)
-            return MockTargetAgentProvider(scenario=scenario)
+        logger.warning("unknown_target_agent_provider", provider=provider_type)
+        return MockTargetAgentProvider(scenario=scenario)

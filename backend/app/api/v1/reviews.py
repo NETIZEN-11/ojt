@@ -1,15 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-from typing import List, Optional, Union
-from pydantic import BaseModel
 from datetime import datetime
+from uuid import UUID
 
-from app.api.deps import get_db, get_review_repo, get_review_label_repo, get_regression_repo, get_current_active_user, require_role, TokenData
-from app.repositories.baselines import ReviewQueueRepository, ReviewLabelRepository, RegressionRepository
-from app.models.review import ReviewQueue, ReviewLabelRecord
-from app.domain.enums import ReviewStatus, ReviewLabel, SeverityLevel
-from app.core.exceptions import NotFoundError, ConflictError
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from app.api.deps import (
+    TokenData,
+    get_regression_repo,
+    get_review_label_repo,
+    get_review_repo,
+    require_role,
+)
+from app.core.exceptions import ConflictError, NotFoundError
+from app.domain.enums import ReviewLabel, ReviewStatus, SeverityLevel
+from app.models.review import ReviewLabelRecord
+from app.repositories.baselines import (
+    RegressionRepository,
+    ReviewLabelRepository,
+    ReviewQueueRepository,
+)
 
 router = APIRouter()
 
@@ -23,6 +32,11 @@ class ReviewAssignRequest(BaseModel):
     assignee_id: UUID
 
 
+class ReviewUpdateRequest(BaseModel):
+    label: ReviewLabel | None = None
+    notes: str | None = None
+
+
 class ReviewResponse(BaseModel):
     id: UUID
     regression_id: UUID
@@ -31,12 +45,12 @@ class ReviewResponse(BaseModel):
     confidence: float
     category: str
     status: ReviewStatus
-    assigned_to: Optional[UUID] = None
-    label: Optional[ReviewLabel] = None
-    reviewer_notes: Optional[str] = None
-    created_at: Union[datetime, str]
-    updated_at: Union[datetime, str]
-    resolved_at: Optional[Union[datetime, str]] = None
+    assigned_to: UUID | None = None
+    label: ReviewLabel | None = None
+    reviewer_notes: str | None = None
+    created_at: datetime | str
+    updated_at: datetime | str
+    resolved_at: datetime | str | None = None
 
     class Config:
         from_attributes = True
@@ -48,18 +62,18 @@ class ReviewLabelResponse(BaseModel):
     label: ReviewLabel
     reviewer_id: UUID
     rationale: str
-    created_at: Union[datetime, str]
+    created_at: datetime | str
 
     class Config:
         from_attributes = True
 
 
-@router.get("/", response_model=List[ReviewResponse])
+@router.get("/", response_model=list[ReviewResponse])
 async def list_reviews(
     skip: int = 0,
     limit: int = 100,
-    status: Optional[ReviewStatus] = None,
-    assignee_id: Optional[UUID] = None,
+    status: ReviewStatus | None = None,
+    assignee_id: UUID | None = None,
     review_repo: ReviewQueueRepository = Depends(get_review_repo),
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "reviewer", "ml_engineer", "qa_engineer", "viewer"])),
 ):
@@ -144,7 +158,7 @@ async def label_review(
     return {"message": "Review labeled", "label": request.label.value}
 
 
-@router.get("/{review_id}/labels", response_model=List[ReviewLabelResponse])
+@router.get("/{review_id}/labels", response_model=list[ReviewLabelResponse])
 async def list_review_labels(
     review_id: UUID,
     label_repo: ReviewLabelRepository = Depends(get_review_label_repo),
@@ -169,3 +183,27 @@ async def escalate_review(
     await review_repo.session.flush()
 
     return {"message": "Review escalated"}
+
+
+@router.patch("/{review_id}")
+async def update_review(
+    review_id: UUID,
+    update: ReviewUpdateRequest,
+    review_repo: ReviewQueueRepository = Depends(get_review_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "reviewer"])),
+):
+    review = await review_repo.get(review_id)
+    if not review:
+        raise NotFoundError("Review", str(review_id))
+
+    if update.notes is not None:
+        review.reviewer_notes = update.notes
+    if update.label is not None:
+        review.label = update.label
+        if update.label in (ReviewLabel.CONFIRMED_REGRESSION, ReviewLabel.FALSE_POSITIVE, ReviewLabel.NON_BLOCKING):
+            review.status = ReviewStatus.RESOLVED
+            review.resolved_at = datetime.utcnow()
+    review.updated_at = datetime.utcnow()
+    await review_repo.session.flush()
+
+    return {"message": "Review updated"}

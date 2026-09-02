@@ -1,8 +1,8 @@
-from typing import List, Tuple
-from app.domain.enums import Verdict
-from app.domain.value_objects import MatcherConfig, EvidenceItem
-from app.evaluation.matchers.base import BaseMatcher
+
 from app.core.config import get_settings
+from app.domain.enums import Verdict
+from app.domain.value_objects import EvidenceItem, MatcherConfig
+from app.evaluation.matchers.base import BaseMatcher
 
 settings = get_settings()
 
@@ -10,7 +10,7 @@ settings = get_settings()
 class ExactMatcher(BaseMatcher):
     async def match(
         self, response: str, config: Optional[MatcherConfig]
-    ) -> Tuple[Verdict, float, List[EvidenceItem]]:
+    ) -> tuple[Verdict, float, list[EvidenceItem]]:
         if not config or not config.pattern:
             return Verdict.INCONCLUSIVE, 0.0, [
                 self._create_evidence("exact_matcher", "No pattern configured", False)

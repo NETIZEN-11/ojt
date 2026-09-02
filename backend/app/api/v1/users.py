@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 from datetime import datetime
-from typing import List, Optional, Union
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr
 
-from app.api.deps import get_db, get_user_repo, get_role_repo, get_permission_repo, get_current_active_user, require_role, TokenData
-from app.repositories.users import UserRepository, RoleRepository, PermissionRepository
-from app.models.user import User, Role, Permission
-from app.core.security import get_password_hash
-from app.core.exceptions import NotFoundError, ConflictError
+from app.api.deps import TokenData, get_permission_repo, get_role_repo, get_user_repo, require_role
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.logging import get_logger
+from app.models.user import Role
+from app.repositories.users import PermissionRepository, RoleRepository, UserRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -20,26 +18,26 @@ class UserResponse(BaseModel):
     id: UUID
     email: str
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     is_active: bool
     is_superuser: bool
-    roles: List[str]
-    created_at: Union[datetime, str]
+    roles: list[str]
+    created_at: datetime | str
 
     class Config:
         from_attributes = True
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    is_active: Optional[bool] = None
+    email: EmailStr | None = None
+    full_name: str | None = None
+    is_active: bool | None = None
 
 
 class RoleResponse(BaseModel):
     id: UUID
     name: str
-    description: Optional[str]
+    description: str | None
     is_system: bool
 
     class Config:
@@ -48,13 +46,13 @@ class RoleResponse(BaseModel):
 
 class RoleCreate(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class PermissionResponse(BaseModel):
     id: UUID
     name: str
-    description: Optional[str]
+    description: str | None
     resource: str
     action: str
 
@@ -62,7 +60,7 @@ class PermissionResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=list[UserResponse])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
@@ -185,7 +183,7 @@ async def remove_role(
     return {"message": "Role removed"}
 
 
-@router.get("/roles/", response_model=List[RoleResponse])
+@router.get("/roles/", response_model=list[RoleResponse])
 async def list_roles(
     role_repo: RoleRepository = Depends(get_role_repo),
     current_user: TokenData = Depends(require_role(["admin"])),
@@ -208,7 +206,7 @@ async def create_role(
     return RoleResponse.model_validate(new_role)
 
 
-@router.get("/permissions/", response_model=List[PermissionResponse])
+@router.get("/permissions/", response_model=list[PermissionResponse])
 async def list_permissions(
     permission_repo: PermissionRepository = Depends(get_permission_repo),
     current_user: TokenData = Depends(require_role(["admin"])),

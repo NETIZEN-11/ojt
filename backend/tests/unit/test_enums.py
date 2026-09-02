@@ -1,17 +1,14 @@
-import pytest
 from app.domain.enums import (
-    TestCaseCategory,
-    TestCaseSeverity,
     ExpectedBehaviorType,
-    Verdict,
-    RunStatus,
-    ExecutionStatus,
-    SeverityLevel,
-    ReviewLabel,
-    ReviewStatus,
     GateDecision,
     GateExitCode,
     ModelProvider,
+    ReviewLabel,
+    RunStatus,
+    SeverityLevel,
+    TestCaseCategory,
+    TestCaseSeverity,
+    Verdict,
 )
 
 

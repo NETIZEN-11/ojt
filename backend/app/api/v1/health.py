@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-import redis
-import chromadb
 import boto3
+import chromadb
+import redis
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import get_settings
@@ -61,6 +61,6 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 
 @router.get("/metrics")
 async def metrics():
-    from prometheus_client import generate_latest
     from fastapi.responses import Response
+    from prometheus_client import generate_latest
     return Response(content=generate_latest(), media_type="text/plain")

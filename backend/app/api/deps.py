@@ -1,26 +1,33 @@
-from typing import AsyncGenerator, List
-from fastapi import Depends, HTTPException, status
+from collections.abc import AsyncGenerator
+
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_async_session
-from app.core.security import get_current_user, TokenData, require_role
-from app.repositories.users import UserRepository, RoleRepository, PermissionRepository
+from app.core.exceptions import AuthorizationError
+from app.core.security import TokenData, get_current_user, require_role, require_scope
 from app.repositories.agents import TargetAgentRepository
-from app.repositories.suites import TestSuiteRepository, TestCaseRepository, TestSuiteVersionRepository, TestCaseVersionRepository
-from app.repositories.runs import RunRepository, ExecutionRepository, ResultRepository
 from app.repositories.baselines import (
-    BaselineRepository,
-    BaselineItemRepository,
-    RegressionRepository,
-    ReviewQueueRepository,
-    ReviewLabelRepository,
     AuditLogRepository,
+    BaselineItemRepository,
+    BaselineRepository,
+    RegressionRepository,
+    ReviewLabelRepository,
+    ReviewQueueRepository,
 )
+from app.repositories.runs import ExecutionRepository, ResultRepository, RunRepository
 from app.repositories.settings import (
+    FeatureFlagRepository,
     ModelConfigRepository,
     PromptVersionRepository,
-    FeatureFlagRepository,
 )
-from app.core.exceptions import AuthorizationError
+from app.repositories.suites import (
+    TestCaseRepository,
+    TestCaseVersionRepository,
+    TestSuiteRepository,
+    TestSuiteVersionRepository,
+)
+from app.repositories.users import PermissionRepository, RoleRepository, UserRepository
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

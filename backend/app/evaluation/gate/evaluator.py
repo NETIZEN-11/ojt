@@ -1,15 +1,12 @@
-from typing import List
 from uuid import UUID
 
-from app.repositories.runs import RunRepository, ResultRepository
-from app.repositories.baselines import RegressionRepository
-from app.models.run import Run
-from app.models.regression import Regression
-from app.domain.enums import RunStatus, GateDecision, GateExitCode, Verdict, SeverityLevel
-from app.domain.value_objects import GateResult, RegressionFinding
-from app.domain.policies import evaluate_gate, should_block_merge
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
+from app.domain.enums import GateDecision, RunStatus
+from app.domain.policies import evaluate_gate, should_block_merge
+from app.domain.value_objects import GateResult, RegressionFinding
+from app.repositories.baselines import RegressionRepository
+from app.repositories.runs import ResultRepository, RunRepository
 
 logger = get_logger(__name__)
 

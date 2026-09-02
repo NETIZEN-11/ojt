@@ -1,33 +1,31 @@
-from typing import Optional, List, Dict, Any
-from uuid import UUID
-from datetime import datetime
-import re
 import json
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
-from app.repositories.runs import ExecutionRepository, ResultRepository
-from app.repositories.suites import TestCaseRepository
-from app.models.run import Execution, Result
-from app.models.test_suite import TestCase
-from app.domain.enums import Verdict, ExpectedBehaviorType, RunStatus, ExecutionStatus
+from app.core.config import get_settings
+from app.core.exceptions import EvaluationFailureError, LLMSchemaError
+from app.core.logging import get_logger
+from app.domain.enums import ExecutionStatus, ExpectedBehaviorType, RunStatus, Verdict
 from app.domain.value_objects import (
+    EvidenceItem,
     ExpectedBehavior,
-    MatcherConfig,
+    JudgeOutput,
     LLMRubric,
     LLMRubricCriterion,
+    MatcherConfig,
     ScoringResult,
-    EvidenceItem,
-    JudgeOutput,
-    CriteriaResult,
 )
-from app.core.exceptions import LLMSchemaError, EvaluationFailureError
-from app.core.config import get_settings
-from app.core.logging import get_logger
+from app.evaluation.judges.fallback_judge import FallbackJudge
+from app.evaluation.judges.llm_judge import LLMJudge
 from app.evaluation.matchers.exact import ExactMatcher
-from app.evaluation.matchers.regex import RegexMatcher
 from app.evaluation.matchers.keyword import KeywordMatcher
 from app.evaluation.matchers.refusal import RefusalMatcher
-from app.evaluation.judges.llm_judge import LLMJudge
-from app.evaluation.judges.fallback_judge import FallbackJudge
+from app.evaluation.matchers.regex import RegexMatcher
+from app.models.run import Execution, Result
+from app.models.test_suite import TestCase
+from app.repositories.runs import ExecutionRepository, ResultRepository
+from app.repositories.suites import TestCaseRepository
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -55,7 +53,6 @@ class ScoringService:
 
     async def score_run(self, run_id: UUID) -> Run:
         from app.repositories.runs import RunRepository
-        from app.models.run import Run
         run_repo = RunRepository(self.execution_repo.session)
         run = await run_repo.get(run_id)
         if not run:
@@ -130,24 +127,23 @@ class ScoringService:
                 type=ExpectedBehaviorType.LLM_RUBRIC,
                 rubric=rubric,
             )
-        else:
-            matcher = None
-            if test_case.matcher_config:
-                mc = test_case.matcher_config
-                matcher_type = getattr(mc, "type", None) or test_case.expected_behavior_type
-                matcher = MatcherConfig(
-                    type=matcher_type,
-                    pattern=getattr(mc, "pattern", None),
-                    keywords=getattr(mc, "keywords", None),
-                    case_sensitive=getattr(mc, "case_sensitive", False),
-                    regex_timeout_ms=getattr(mc, "regex_timeout_ms", 1000),
-                    expected_keys=getattr(mc, "expected_keys", None),
-                    required_fields=getattr(mc, "required_fields", None),
-                )
-            return ExpectedBehavior(
-                type=test_case.expected_behavior_type,
-                matcher=matcher,
+        matcher = None
+        if test_case.matcher_config:
+            mc = test_case.matcher_config
+            matcher_type = getattr(mc, "type", None) or test_case.expected_behavior_type
+            matcher = MatcherConfig(
+                type=matcher_type,
+                pattern=getattr(mc, "pattern", None),
+                keywords=getattr(mc, "keywords", None),
+                case_sensitive=getattr(mc, "case_sensitive", False),
+                regex_timeout_ms=getattr(mc, "regex_timeout_ms", 1000),
+                expected_keys=getattr(mc, "expected_keys", None),
+                required_fields=getattr(mc, "required_fields", None),
             )
+        return ExpectedBehavior(
+            type=test_case.expected_behavior_type,
+            matcher=matcher,
+        )
 
     async def _score_execution(
         self, execution: Execution, test_case: TestCase
@@ -252,7 +248,7 @@ class ScoringService:
             estimated_cost=judge_output.metadata.get("estimated_cost", 0.0),
         )
 
-    def _validate_judge_output(self, output: Optional[JudgeOutput]) -> bool:
+    def _validate_judge_output(self, output: JudgeOutput | None) -> bool:
         if not output:
             return False
         try:
@@ -261,7 +257,7 @@ class ScoringService:
         except Exception:
             return False
 
-    def _extract_response_text(self, response: Optional[Dict[str, Any]]) -> str:
+    def _extract_response_text(self, response: dict[str, Any] | None) -> str:
         if not response:
             return ""
         if isinstance(response, str):

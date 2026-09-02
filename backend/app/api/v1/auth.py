@@ -1,22 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, EmailStr
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 
-from app.api.deps import get_db, get_user_repo, get_current_active_user
-from app.repositories.users import UserRepository
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_active_user, get_db, get_user_repo
+from app.core.exceptions import AuthenticationError
+from app.core.logging import get_logger
 from app.core.security import (
-    verify_password,
-    get_password_hash,
+    TokenData,
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+    get_password_hash,
     get_scopes_for_roles,
-    TokenData,
+    verify_password,
 )
 from app.models.user import User
-from app.core.exceptions import AuthenticationError
-from app.core.logging import get_logger
+from app.repositories.users import UserRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -65,7 +66,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db), user_
         data={"sub": str(user.id), "username": user.username, "email": user.email, "roles": roles, "scopes": scopes}
     )
 
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     await db.commit()
 
     logger.info("login_success", user_id=str(user.id))

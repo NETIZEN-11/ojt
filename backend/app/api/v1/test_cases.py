@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from datetime import datetime
-from typing import List, Optional, Union
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_case_repo, get_current_active_user, require_role, TokenData
-from app.repositories.suites import TestCaseRepository
-from app.models.test_suite import TestCase
-from app.domain.enums import TestCaseCategory, TestCaseSeverity
+from app.api.deps import TokenData, get_case_repo, require_role
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
+from app.domain.enums import TestCaseCategory, TestCaseSeverity
+from app.models.test_suite import TestCase
+from app.repositories.suites import TestCaseRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -26,11 +24,11 @@ class TestCaseCreate(BaseModel):
 
 
 class TestCaseUpdate(BaseModel):
-    category: Optional[TestCaseCategory] = None
-    severity: Optional[TestCaseSeverity] = None
-    input: Optional[str] = None
-    expected_behavior: Optional[dict] = None
-    metadata: Optional[dict] = None
+    category: TestCaseCategory | None = None
+    severity: TestCaseSeverity | None = None
+    input: str | None = None
+    expected_behavior: dict | None = None
+    metadata: dict | None = None
 
 
 class TestCaseResponse(BaseModel):
@@ -60,12 +58,12 @@ def _build_case_response(c) -> TestCaseResponse:
     )
 
 
-@router.get("/suite/{suite_id}", response_model=List[TestCaseResponse])
+@router.get("/suite/{suite_id}", response_model=list[TestCaseResponse])
 async def list_test_cases(
     suite_id: UUID,
     skip: int = 0,
     limit: int = 100,
-    category: Optional[TestCaseCategory] = None,
+    category: TestCaseCategory | None = None,
     case_repo: TestCaseRepository = Depends(get_case_repo),
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
 ):

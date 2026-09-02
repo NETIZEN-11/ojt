@@ -1,15 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 from datetime import datetime
-from typing import List, Optional, Union
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_regression_repo, get_current_active_user, require_role, TokenData
-from app.repositories.baselines import RegressionRepository
-from app.models.regression import Regression
-from app.domain.enums import RegressionType, SeverityLevel, Verdict
+from app.api.deps import TokenData, get_regression_repo, require_role
 from app.core.exceptions import NotFoundError
+from app.domain.enums import RegressionType, SeverityLevel, Verdict
+from app.repositories.baselines import RegressionRepository
 
 router = APIRouter()
 
@@ -23,18 +21,18 @@ class RegressionResponse(BaseModel):
     current_verdict: Verdict
     regression_type: RegressionType
     severity: SeverityLevel
-    evidence: List[dict] = []
+    evidence: list[dict] = []
     acknowledged: bool = False
-    created_at: Union[datetime, str]
+    created_at: datetime | str
 
     class Config:
         from_attributes = True
 
 
-@router.get("/run/{run_id}", response_model=List[RegressionResponse])
+@router.get("/run/{run_id}", response_model=list[RegressionResponse])
 async def list_regressions_by_run(
     run_id: UUID,
-    severity: Optional[SeverityLevel] = None,
+    severity: SeverityLevel | None = None,
     regression_repo: RegressionRepository = Depends(get_regression_repo),
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
 ):
@@ -46,7 +44,7 @@ async def list_regressions_by_run(
     return [RegressionResponse.model_validate(reg) for reg in regressions]
 
 
-@router.get("/baseline/{baseline_id}", response_model=List[RegressionResponse])
+@router.get("/baseline/{baseline_id}", response_model=list[RegressionResponse])
 async def list_regressions_by_baseline(
     baseline_id: UUID,
     regression_repo: RegressionRepository = Depends(get_regression_repo),

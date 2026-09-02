@@ -1,14 +1,14 @@
-from celery import shared_task
-from datetime import datetime, timedelta
 import asyncio
+from datetime import datetime, timedelta
 
-from app.core.database import get_async_session
-from app.repositories.runs import RunRepository
-from app.repositories.baselines import AuditLogRepository
-from app.models.run import Run
-from app.domain.enums import RunStatus
+from celery import shared_task
+
 from app.core.config import get_settings
+from app.core.database import get_async_session
 from app.core.logging import get_logger
+from app.domain.enums import RunStatus
+from app.repositories.baselines import AuditLogRepository
+from app.repositories.runs import RunRepository
 
 settings = get_settings()
 logger = get_logger(__name__)

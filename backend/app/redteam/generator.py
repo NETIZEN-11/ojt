@@ -1,13 +1,10 @@
-from typing import List, Dict, Any, Optional
-from uuid import UUID
-import asyncio
+from typing import Any
 
-from app.domain.enums import TestCaseCategory, TestCaseSeverity
-from app.domain.value_objects import MatcherConfig, ExpectedBehavior, TestCaseMetadata
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.providers.llm import LLMProviderFactory
+from app.domain.enums import TestCaseCategory
 from app.providers.embeddings import EmbeddingProviderFactory
+from app.providers.llm import LLMProviderFactory
 from app.rag.vector_store import VectorStore
 
 settings = get_settings()
@@ -64,10 +61,10 @@ class AdversarialGenerator:
 
     async def generate_candidates(
         self,
-        categories: List[TestCaseCategory],
+        categories: list[TestCaseCategory],
         count: int = None,
-        context: Dict[str, Any] = None,
-    ) -> List[Dict[str, Any]]:
+        context: dict[str, Any] = None,
+    ) -> list[dict[str, Any]]:
         count = count or settings.ADVERSARIAL_BATCH_SIZE
         all_candidates = []
 
@@ -84,8 +81,8 @@ class AdversarialGenerator:
         self,
         category: TestCaseCategory,
         count: int,
-        context: Dict[str, Any] = None,
-    ) -> List[Dict[str, Any]]:
+        context: dict[str, Any] = None,
+    ) -> list[dict[str, Any]]:
         if settings.EVAL_MODE == "local" or not settings.GENERATOR_API_KEY:
             return self._get_static_attacks(category, count)
 
@@ -106,7 +103,7 @@ class AdversarialGenerator:
             return self._get_static_attacks(category, count)
 
     def _build_generation_prompt(
-        self, category: TestCaseCategory, count: int, context: Dict[str, Any] = None
+        self, category: TestCaseCategory, count: int, context: dict[str, Any] = None
     ) -> str:
         context_str = ""
         if context:
@@ -127,7 +124,7 @@ Each candidate must be a JSON object with:
 
 Output as JSON: {{"candidates": [...]}}"""
 
-    def _get_static_attacks(self, category: TestCaseCategory, count: int) -> List[Dict[str, Any]]:
+    def _get_static_attacks(self, category: TestCaseCategory, count: int) -> list[dict[str, Any]]:
         attacks = STATIC_ATTACK_LIBRARY.get(category, [])
         return [
             {
@@ -139,7 +136,7 @@ Output as JSON: {{"candidates": [...]}}"""
             for attack in attacks[:count]
         ]
 
-    async def _filter_novelty(self, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _filter_novelty(self, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not candidates:
             return []
 
@@ -164,9 +161,9 @@ Output as JSON: {{"candidates": [...]}}"""
 
     async def generate_from_taxonomy(
         self,
-        taxonomy_entries: List[Dict[str, Any]],
+        taxonomy_entries: list[dict[str, Any]],
         count: int = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         categories = list(set(entry.get("category") for entry in taxonomy_entries if entry.get("category")))
         category_enums = [TestCaseCategory(c) for c in categories if c in TestCaseCategory._value2member_map_]
         return await self.generate_candidates(category_enums, count)

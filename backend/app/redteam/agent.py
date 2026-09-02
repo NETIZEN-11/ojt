@@ -1,15 +1,14 @@
-from typing import List, Dict, Any, Optional
-from uuid import UUID
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
-from langgraph.graph import StateGraph, END
-import httpx
+from typing import Any
 
-from app.domain.enums import Verdict
-from app.domain.value_objects import EvidenceItem
+import httpx
+from langgraph.graph import END, StateGraph
+from pydantic import BaseModel, Field
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domain.enums import Verdict
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -32,33 +31,33 @@ class AttackStrategy(BaseModel):
     category: str
     initial_prompt: str
     max_turns: int = Field(default=8)
-    stop_conditions: List[str] = []
+    stop_conditions: list[str] = []
 
 
 class Turn(BaseModel):
     turn_number: int
     prompt: str
     response: str
-    tool_calls: List[Dict[str, Any]] = []
-    judge_verdict: Optional[Verdict] = None
-    judge_rationale: Optional[str] = None
+    tool_calls: list[dict[str, Any]] = []
+    judge_verdict: Verdict | None = None
+    judge_rationale: str | None = None
 
 
 class RedTeamSessionState(BaseModel):
     state: RedTeamState = RedTeamState.START
-    strategy: Optional[AttackStrategy] = None
-    turns: List[Turn] = []
+    strategy: AttackStrategy | None = None
+    turns: list[Turn] = []
     current_turn: int = 0
     target_agent_url: str
-    target_agent_headers: Dict[str, str] = {}
+    target_agent_headers: dict[str, str] = {}
     objective_achieved: bool = False
-    final_verdict: Optional[Verdict] = None
-    transcript: List[Dict[str, Any]] = []
-    error: Optional[str] = None
+    final_verdict: Verdict | None = None
+    transcript: list[dict[str, Any]] = []
+    error: str | None = None
 
 
 class RedTeamAgent:
-    def __init__(self, target_agent_url: str, target_agent_headers: Dict[str, str] = None):
+    def __init__(self, target_agent_url: str, target_agent_headers: dict[str, str] = None):
         self.target_agent_url = target_agent_url
         self.target_agent_headers = target_agent_headers or {}
         self.max_turns = settings.REDTEAM_MAX_TURNS
@@ -153,7 +152,7 @@ class RedTeamAgent:
                 data = response.json()
                 current_turn.response = data.get("response", data.get("text", str(data)))
             except Exception as e:
-                current_turn.response = f"ERROR: {str(e)}"
+                current_turn.response = f"ERROR: {e!s}"
                 logger.error("redteam_target_call_failed", turn=state.current_turn, error=str(e))
 
         state.transcript.append({

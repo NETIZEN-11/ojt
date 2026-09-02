@@ -1,21 +1,25 @@
 from datetime import datetime
+from typing import Optional
 from uuid import uuid4
-from typing import Optional, Dict, Any, List
+
 from sqlalchemy import (
-    String,
-    Text,
     DateTime,
+    Float,
     ForeignKey,
     Index,
-    Enum as SQLEnum,
-    Float,
+    String,
+    Text,
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.models import Base
-from app.domain.enums import SeverityLevel, ReviewLabel, ReviewStatus
+
+from app.domain.enums import ReviewLabel, ReviewStatus, SeverityLevel
+from app.models.user import Base
 
 
 class ReviewQueue(Base):
@@ -37,20 +41,20 @@ class ReviewQueue(Base):
         nullable=False,
         index=True,
     )
-    assigned_to: Mapped[Optional[PG_UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    label: Mapped[Optional[ReviewLabel]] = mapped_column(
+    assigned_to: Mapped[PG_UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    label: Mapped[ReviewLabel | None] = mapped_column(
         SQLEnum(ReviewLabel, native_enum=False, create_constraint=True),
         nullable=True,
     )
-    reviewer_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     regression: Mapped["Regression"] = relationship(back_populates="reviews", lazy="joined")
     run: Mapped["Run"] = relationship(back_populates="reviews", lazy="joined")
     assignee: Mapped[Optional["User"]] = relationship(lazy="joined")
-    labels: Mapped[List["ReviewLabelRecord"]] = relationship(back_populates="review", lazy="dynamic", cascade="all, delete-orphan")
+    labels: Mapped[list["ReviewLabelRecord"]] = relationship(back_populates="review", lazy="dynamic", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_review_queue_status_severity", "status", "severity"),

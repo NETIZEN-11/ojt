@@ -1,14 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from datetime import datetime
 
+import pytest
+
+from app.domain.enums import RegressionType, SeverityLevel, Verdict
 from app.evaluation.regression.detector import RegressionDetector
-from app.domain.enums import Verdict, RegressionType, SeverityLevel
-from app.domain.value_objects import RegressionFinding, EvidenceItem
-from app.models.regression import Regression
-from app.models.baseline import BaselineItem
-from app.models.run import Result
 
 
 @pytest.fixture
@@ -63,7 +59,7 @@ class TestRegressionDetector:
     @pytest.mark.asyncio
     async def test_pass_to_fail_regression(self, detector, run_id, baseline_id, baseline):
         test_case_id = uuid4()
-        
+
         # Mock baseline
         detector.baseline_repo.get = AsyncMock(return_value=baseline)
         detector.baseline_item_repo.list_by_baseline = AsyncMock(return_value=[
@@ -73,7 +69,7 @@ class TestRegressionDetector:
                 confidence=0.9,
             )
         ])
-        
+
         # Mock current results
         detector.result_repo.list_by_run = AsyncMock(return_value=[
             MagicMock(
@@ -82,12 +78,12 @@ class TestRegressionDetector:
                 confidence=0.8,
             )
         ])
-        
+
         # Mock regression creation
         detector.regression_repo.create = AsyncMock(return_value=MagicMock())
-        
+
         findings = await detector.detect_regressions(run_id, baseline_id)
-        
+
         assert len(findings) == 1
         finding = findings[0]
         assert finding.test_case_id == str(test_case_id)
@@ -98,7 +94,7 @@ class TestRegressionDetector:
     @pytest.mark.asyncio
     async def test_pass_to_inconclusive_regression(self, detector, run_id, baseline_id, baseline):
         test_case_id = uuid4()
-        
+
         detector.baseline_repo.get = AsyncMock(return_value=baseline)
         detector.baseline_item_repo.list_by_baseline = AsyncMock(return_value=[
             MagicMock(test_case_id=test_case_id, verdict=Verdict.PASS, confidence=0.9)
@@ -107,9 +103,9 @@ class TestRegressionDetector:
             MagicMock(test_case_id=test_case_id, verdict=Verdict.INCONCLUSIVE, confidence=0.5)
         ])
         detector.regression_repo.create = AsyncMock(return_value=MagicMock())
-        
+
         findings = await detector.detect_regressions(run_id, baseline_id)
-        
+
         assert len(findings) == 1
         finding = findings[0]
         assert finding.regression_type == RegressionType.PASS_TO_INCONCLUSIVE.value
@@ -117,7 +113,7 @@ class TestRegressionDetector:
     @pytest.mark.asyncio
     async def test_fail_to_fail_no_regression(self, detector, run_id, baseline_id, baseline):
         test_case_id = uuid4()
-        
+
         detector.baseline_repo.get = AsyncMock(return_value=baseline)
         detector.baseline_item_repo.list_by_baseline = AsyncMock(return_value=[
             MagicMock(test_case_id=test_case_id, verdict=Verdict.FAIL, confidence=0.8)
@@ -126,24 +122,24 @@ class TestRegressionDetector:
             MagicMock(test_case_id=test_case_id, verdict=Verdict.FAIL, confidence=0.7)
         ])
         detector.regression_repo.create = AsyncMock()
-        
+
         findings = await detector.detect_regressions(run_id, baseline_id)
-        
+
         assert len(findings) == 0
 
     @pytest.mark.asyncio
     async def test_new_test_case_regression(self, detector, run_id, baseline_id, baseline):
         test_case_id = uuid4()
-        
+
         detector.baseline_repo.get = AsyncMock(return_value=baseline)
         detector.baseline_item_repo.list_by_baseline = AsyncMock(return_value=[])
         detector.result_repo.list_by_run = AsyncMock(return_value=[
             MagicMock(test_case_id=test_case_id, verdict=Verdict.FAIL, confidence=0.8)
         ])
         detector.regression_repo.create = AsyncMock(return_value=MagicMock())
-        
+
         findings = await detector.detect_regressions(run_id, baseline_id)
-        
+
         assert len(findings) == 1
         finding = findings[0]
         assert finding.regression_type == RegressionType.NEW_FAILURE.value

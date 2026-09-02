@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
-from app.domain.value_objects import LLMRubric, JudgeOutput, EvidenceItem
+
+from app.domain.value_objects import JudgeOutput, LLMRubric
 
 
 class BaseJudge(ABC):
@@ -9,6 +9,6 @@ class BaseJudge(ABC):
         self,
         test_input: str,
         response: str,
-        rubric: Optional[LLMRubric],
+        rubric: LLMRubric | None,
     ) -> JudgeOutput:
         pass

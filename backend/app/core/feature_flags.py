@@ -1,5 +1,7 @@
-from typing import Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -10,10 +12,10 @@ class FeatureFlag(BaseModel):
     enabled: bool
     description: str
     rollout_percentage: int = 100
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
-FEATURE_FLAGS: Dict[str, FeatureFlag] = {
+FEATURE_FLAGS: dict[str, FeatureFlag] = {
     "adversarial_generator": FeatureFlag(
         name="adversarial_generator",
         enabled=settings.FEATURE_ADVERSARIAL_GENERATOR,
@@ -50,9 +52,9 @@ FEATURE_FLAGS: Dict[str, FeatureFlag] = {
 class FeatureFlagService:
     def __init__(self):
         self._flags = FEATURE_FLAGS.copy()
-        self._overrides: Dict[str, bool] = {}
+        self._overrides: dict[str, bool] = {}
 
-    def is_enabled(self, flag_name: str, user_id: Optional[str] = None) -> bool:
+    def is_enabled(self, flag_name: str, user_id: str | None = None) -> bool:
         if flag_name in self._overrides:
             return self._overrides[flag_name]
         flag = self._flags.get(flag_name)
@@ -60,10 +62,10 @@ class FeatureFlagService:
             return False
         return flag.enabled
 
-    def get_flag(self, flag_name: str) -> Optional[FeatureFlag]:
+    def get_flag(self, flag_name: str) -> FeatureFlag | None:
         return self._flags.get(flag_name)
 
-    def list_flags(self) -> Dict[str, FeatureFlag]:
+    def list_flags(self) -> dict[str, FeatureFlag]:
         return self._flags.copy()
 
     def set_override(self, flag_name: str, enabled: bool) -> None:

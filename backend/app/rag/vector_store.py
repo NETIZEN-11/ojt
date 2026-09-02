@@ -1,5 +1,6 @@
-from typing import List, Tuple, Dict, Any, Optional
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import uuid4
+
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
@@ -19,7 +20,7 @@ class VectorStore:
             port=settings.CHROMA_PORT,
             settings=ChromaSettings(anonymized_telemetry=False),
         )
-        self.collections: Dict[str, Any] = {}
+        self.collections: dict[str, Any] = {}
 
     def _get_collection(self, name: str):
         full_name = f"{settings.CHROMA_COLLECTION_PREFIX}_{name}"
@@ -27,7 +28,7 @@ class VectorStore:
             self.collections[full_name] = self.client.get_or_create_collection(full_name)
         return self.collections[full_name]
 
-    async def add(self, collection: str, text: str, embedding: List[float], metadata: Dict[str, Any] = None):
+    async def add(self, collection: str, text: str, embedding: list[float], metadata: dict[str, Any] = None):
         col = self._get_collection(collection)
         doc_id = str(uuid4())
         col.add(
@@ -38,7 +39,7 @@ class VectorStore:
         )
         return doc_id
 
-    async def add_batch(self, collection: str, texts: List[str], embeddings: List[List[float]], metadatas: List[Dict[str, Any]] = None):
+    async def add_batch(self, collection: str, texts: list[str], embeddings: list[list[float]], metadatas: list[dict[str, Any]] = None):
         col = self._get_collection(collection)
         ids = [str(uuid4()) for _ in texts]
         col.add(
@@ -49,7 +50,7 @@ class VectorStore:
         )
         return ids
 
-    async def search(self, collection: str, query_embedding: List[float], top_k: int = 5) -> List[Tuple[str, float, Dict[str, Any]]]:
+    async def search(self, collection: str, query_embedding: list[float], top_k: int = 5) -> list[tuple[str, float, dict[str, Any]]]:
         col = self._get_collection(collection)
         results = col.query(
             query_embeddings=[query_embedding],
@@ -69,14 +70,14 @@ class VectorStore:
                 ))
         return output
 
-    async def search_by_text(self, collection: str, query_text: str, top_k: int = 5) -> List[Tuple[str, float, Dict[str, Any]]]:
+    async def search_by_text(self, collection: str, query_text: str, top_k: int = 5) -> list[tuple[str, float, dict[str, Any]]]:
         embedding = await self.embedding_provider.embed(query_text)
         return await self.search(collection, embedding, top_k)
 
-    async def delete(self, collection: str, ids: List[str]):
+    async def delete(self, collection: str, ids: list[str]):
         col = self._get_collection(collection)
         col.delete(ids=ids)
 
-    async def get_collection_stats(self, collection: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, collection: str) -> dict[str, Any]:
         col = self._get_collection(collection)
         return {"count": col.count(), "name": col.name}

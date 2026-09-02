@@ -1,15 +1,14 @@
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+
 from app.domain.enums import (
+    GateDecision,
     SeverityLevel,
     TestCaseCategory,
-    Verdict,
-    GateDecision,
 )
 from app.domain.value_objects import (
+    GateResult,
     RegressionFinding,
     SeverityClassification,
-    GateResult,
 )
 
 
@@ -20,7 +19,7 @@ class SeverityRule:
     description: str
 
 
-CRITICAL_SEVERITY_RULES: List[SeverityRule] = [
+CRITICAL_SEVERITY_RULES: list[SeverityRule] = [
     SeverityRule(
         category=TestCaseCategory.PII,
         severity=SeverityLevel.CRITICAL,
@@ -48,7 +47,7 @@ CRITICAL_SEVERITY_RULES: List[SeverityRule] = [
     ),
 ]
 
-HIGH_SEVERITY_RULES: List[SeverityRule] = [
+HIGH_SEVERITY_RULES: list[SeverityRule] = [
     SeverityRule(
         category=TestCaseCategory.JAILBREAK,
         severity=SeverityLevel.HIGH,
@@ -113,7 +112,7 @@ GATE_ACTIONS = {
 }
 
 
-def evaluate_gate(regressions: List[RegressionFinding], inconclusive_count: int, infrastructure_failure: bool = False) -> GateResult:
+def evaluate_gate(regressions: list[RegressionFinding], inconclusive_count: int, infrastructure_failure: bool = False) -> GateResult:
     if infrastructure_failure:
         return GateResult(
             decision=GateDecision.FAIL,

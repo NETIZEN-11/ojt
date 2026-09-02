@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Optional, List, Union
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str
     CELERY_TASK_SERIALIZER: str = "json"
     CELERY_RESULT_SERIALIZER: str = "json"
-    CELERY_ACCEPT_CONTENT: List[str] = ["json"]
+    CELERY_ACCEPT_CONTENT: list[str] = ["json"]
     CELERY_TIMEZONE: str = "UTC"
     CELERY_ENABLE_UTC: bool = True
     CELERY_TASK_TRACK_STARTED: bool = True
@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     OIDC_CLIENT_SECRET: str = ""
     OIDC_SCOPES: str = "openid,profile,email"
 
-    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:8000"
+    CORS_ORIGINS: str | list[str] = "http://localhost:3000,http://localhost:8000"
     CORS_ALLOW_CREDENTIALS: bool = True
 
     RATE_LIMIT_REQUESTS: int = 100
@@ -158,26 +158,26 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS")
     @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, list):
             return v
         return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     @field_validator("TARGET_AGENT_ALLOWED_HOSTS")
     @classmethod
-    def parse_allowed_hosts(cls, v: Union[str, List[str]]) -> List[str]:
+    def parse_allowed_hosts(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, list):
             return v
         return [host.strip() for host in v.split(",") if host.strip()]
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, list):
             return self.CORS_ORIGINS
         return self.parse_cors_origins(self.CORS_ORIGINS)
 
     @property
-    def allowed_hosts_list(self) -> List[str]:
+    def allowed_hosts_list(self) -> list[str]:
         if isinstance(self.TARGET_AGENT_ALLOWED_HOSTS, list):
             return self.TARGET_AGENT_ALLOWED_HOSTS
         return self.parse_allowed_hosts(self.TARGET_AGENT_ALLOWED_HOSTS)

@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional
+from typing import Any
+
 from fastapi import HTTPException, status
 
 
@@ -7,7 +8,7 @@ class RedTeamException(Exception):
         self,
         message: str,
         code: str = "INTERNAL_ERROR",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
     ):
         self.message = message
@@ -18,17 +19,17 @@ class RedTeamException(Exception):
 
 
 class ValidationError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "VALIDATION_ERROR", details, status.HTTP_400_BAD_REQUEST)
 
 
 class AuthenticationError(RedTeamException):
-    def __init__(self, message: str = "Authentication failed", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Authentication failed", details: dict[str, Any] | None = None):
         super().__init__(message, "AUTHENTICATION_ERROR", details, status.HTTP_401_UNAUTHORIZED)
 
 
 class AuthorizationError(RedTeamException):
-    def __init__(self, message: str = "Not authorized", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Not authorized", details: dict[str, Any] | None = None):
         super().__init__(message, "AUTHORIZATION_ERROR", details, status.HTTP_403_FORBIDDEN)
 
 
@@ -43,12 +44,12 @@ class NotFoundError(RedTeamException):
 
 
 class ConflictError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "CONFLICT", details, status.HTTP_409_CONFLICT)
 
 
 class TargetAgentError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "TARGET_AGENT_ERROR", details, status.HTTP_502_BAD_GATEWAY)
 
 
@@ -62,7 +63,7 @@ class TargetAgentTimeoutError(TargetAgentError):
 
 
 class TargetAgentUnavailableError(TargetAgentError):
-    def __init__(self, url: str, status_code: Optional[int] = None):
+    def __init__(self, url: str, status_code: int | None = None):
         details = {"url": url}
         if status_code:
             details["status_code"] = status_code
@@ -74,7 +75,7 @@ class TargetAgentUnavailableError(TargetAgentError):
 
 
 class LLMError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "LLM_ERROR", details, status.HTTP_502_BAD_GATEWAY)
 
 
@@ -106,17 +107,17 @@ class LLMSchemaError(LLMError):
 
 
 class DatabaseError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "DATABASE_ERROR", details, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VectorDBError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "VECTOR_DB_ERROR", details, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class StorageError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "STORAGE_ERROR", details, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -131,7 +132,7 @@ class RateLimitError(RedTeamException):
 
 
 class PipelineError(RedTeamException):
-    def __init__(self, message: str, stage: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, stage: str, details: dict[str, Any] | None = None):
         super().__init__(
             message,
             "PIPELINE_ERROR",
@@ -141,12 +142,12 @@ class PipelineError(RedTeamException):
 
 
 class EvaluationFailureError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "EVALUATION_FAILURE", details, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RegressionDetectedError(RedTeamException):
-    def __init__(self, message: str, severity: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, severity: str, details: dict[str, Any] | None = None):
         super().__init__(
             message,
             "REGRESSION_DETECTED",
@@ -156,7 +157,7 @@ class RegressionDetectedError(RedTeamException):
 
 
 class InconclusiveError(RedTeamException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, "INCONCLUSIVE", details, status.HTTP_200_OK)
 
 
@@ -191,7 +192,7 @@ class TurnCapExceededError(RedTeamException):
 
 
 class PIIDetectedError(RedTeamException):
-    def __init__(self, pii_types: list, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, pii_types: list, details: dict[str, Any] | None = None):
         super().__init__(
             f"PII detected in content: {', '.join(pii_types)}",
             "PII_DETECTED",

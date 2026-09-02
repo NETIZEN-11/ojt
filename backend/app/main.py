@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
-import structlog
 
-from app.core.config import get_settings
-from app.core.logging import setup_logging, get_logger
-from app.core.telemetry import setup_telemetry
-from app.core.database import init_db, close_db
-from app.core.exceptions import RedTeamException, to_http_exception
 from app.api.v1.router import api_router
+from app.core.config import get_settings
+from app.core.database import close_db, init_db
+from app.core.exceptions import RedTeamException, to_http_exception
+from app.core.logging import get_logger, setup_logging
+from app.core.telemetry import setup_telemetry
 
 settings = get_settings()
 logger = get_logger(__name__)

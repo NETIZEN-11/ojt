@@ -1,7 +1,8 @@
 import time
-from typing import Optional, Tuple
 from functools import wraps
-from fastapi import Request, HTTPException, status
+
+from fastapi import HTTPException, Request, status
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -25,7 +26,7 @@ class RateLimiter:
                     del self._windows[key]
             self._last_cleanup = now
 
-    def check_rate_limit(self, key: str, limit: int = None, window: int = None) -> Tuple[bool, int, int]:
+    def check_rate_limit(self, key: str, limit: int = None, window: int = None) -> tuple[bool, int, int]:
         limit = limit or settings.RATE_LIMIT_REQUESTS
         window = window or settings.RATE_LIMIT_WINDOW_SECONDS
         self._cleanup()

@@ -1,14 +1,15 @@
-from celery import shared_task
-from uuid import UUID
 import asyncio
+from uuid import UUID
 
+from celery import shared_task
+
+from app.core.config import get_settings
 from app.core.database import get_async_session
-from app.repositories.agents import TargetAgentRepository
+from app.core.logging import get_logger
 from app.redteam.agent import RedTeamAgent
 from app.redteam.generator import AdversarialGenerator
 from app.redteam.planner import AttackPlanner
-from app.core.config import get_settings
-from app.core.logging import get_logger
+from app.repositories.agents import TargetAgentRepository
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -25,7 +26,7 @@ def run_redteam_attack(self, target_agent_id: str, strategy: dict = None):
             agent = await agent_repo.get(agent_uuid)
             if not agent:
                 logger.error("target_agent_not_found", target_agent_id=target_agent_id)
-                return
+                return None
 
             redteam_agent = RedTeamAgent(
                 target_agent_url=agent.endpoint_url,

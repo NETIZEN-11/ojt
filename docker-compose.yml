@@ -62,8 +62,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: redteam-backend
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/redteam
@@ -94,8 +94,8 @@ services:
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: redteam-worker
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
     environment:

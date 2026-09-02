@@ -1,13 +1,11 @@
-from typing import List, Optional
 from uuid import UUID
 
-from app.repositories.suites import TestCaseRepository
-from app.models.test_suite import TestCase
-from app.domain.enums import SeverityLevel, TestCaseCategory
-from app.domain.value_objects import RegressionFinding, SeverityClassification
-from app.domain.policies import classify_severity_deterministic, CRITICAL_SEVERITY_RULES, HIGH_SEVERITY_RULES
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domain.enums import SeverityLevel
+from app.domain.policies import classify_severity_deterministic
+from app.domain.value_objects import RegressionFinding, SeverityClassification
+from app.repositories.suites import TestCaseRepository
 
 settings = get_settings()
 logger = get_logger(__name__)

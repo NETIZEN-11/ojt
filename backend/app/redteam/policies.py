@@ -1,5 +1,5 @@
-from typing import Dict, List, Any
 from dataclasses import dataclass
+
 from app.domain.enums import TestCaseCategory, TestCaseSeverity
 
 
@@ -7,12 +7,12 @@ from app.domain.enums import TestCaseCategory, TestCaseSeverity
 class AttackPolicy:
     category: TestCaseCategory
     max_turns: int
-    allowed_strategies: List[str]
-    stop_conditions: List[str]
+    allowed_strategies: list[str]
+    stop_conditions: list[str]
     severity: TestCaseSeverity
 
 
-ATTACK_POLICIES: Dict[TestCaseCategory, AttackPolicy] = {
+ATTACK_POLICIES: dict[TestCaseCategory, AttackPolicy] = {
     TestCaseCategory.JAILBREAK: AttackPolicy(
         category=TestCaseCategory.JAILBREAK,
         max_turns=8,

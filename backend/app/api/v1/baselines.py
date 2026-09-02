@@ -1,16 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+from typing import Optional
 from uuid import UUID
-from datetime import datetime
-from typing import List, Optional, Union
-from pydantic import BaseModel
-from datetime import datetime
 
-from app.api.deps import get_db, get_baseline_repo, get_baseline_item_repo, get_current_active_user, require_role, TokenData
-from app.repositories.baselines import BaselineRepository, BaselineItemRepository
-from app.models.baseline import Baseline, BaselineItem
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from app.api.deps import TokenData, get_baseline_item_repo, get_baseline_repo, require_role
+from app.core.exceptions import ConflictError, NotFoundError
 from app.domain.enums import Verdict
-from app.core.exceptions import NotFoundError, ConflictError
+from app.models.baseline import Baseline, BaselineItem
+from app.repositories.baselines import BaselineItemRepository, BaselineRepository
 
 router = APIRouter()
 
@@ -20,7 +19,7 @@ class BaselineCreate(BaseModel):
     suite_version: int
     run_id: UUID
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class BaselineResponse(BaseModel):
@@ -29,14 +28,14 @@ class BaselineResponse(BaseModel):
     suite_version: int
     run_id: UUID
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     framework_version: str = "1.0.0"
     model_versions: dict = {}
     prompt_versions: dict = {}
-    approved_by: Optional[UUID] = None
-    approved_at: Optional[Union[datetime, str]] = None
+    approved_by: UUID | None = None
+    approved_at: datetime | str | None = None
     is_active: bool = False
-    created_at: Union[datetime, str]
+    created_at: datetime | str
 
     class Config:
         from_attributes = True
@@ -48,17 +47,17 @@ class BaselineItemResponse(BaseModel):
     test_case_id: UUID
     verdict: Verdict
     confidence: float
-    evidence: List[dict]
+    evidence: list[dict]
 
     class Config:
         from_attributes = True
 
 
-@router.get("/", response_model=List[BaselineResponse])
+@router.get("/", response_model=list[BaselineResponse])
 async def list_baselines(
     skip: int = 0,
     limit: int = 100,
-    suite_id: Optional[UUID] = None,
+    suite_id: UUID | None = None,
     baseline_repo: BaselineRepository = Depends(get_baseline_repo),
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
 ):
@@ -130,7 +129,7 @@ async def get_baseline(
     return BaselineResponse.model_validate(baseline)
 
 
-@router.get("/{baseline_id}/items", response_model=List[BaselineItemResponse])
+@router.get("/{baseline_id}/items", response_model=list[BaselineItemResponse])
 async def list_baseline_items(
     baseline_id: UUID,
     baseline_item_repo: BaselineItemRepository = Depends(get_baseline_item_repo),
