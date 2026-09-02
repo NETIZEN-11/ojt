@@ -62,34 +62,7 @@ const SuiteNotFound = ({ router }: { router: ReturnType<typeof useRouter> }) => 
   </div>
 );
 
-const MainContent = ({
-  suite,
-  router,
-  handleCreateVersion,
-  showCreateCaseDialog,
-  setShowCreateCaseDialog,
-  showImportDialog,
-  setShowImportDialog,
-  importFormat,
-  setImportFormat,
-  importContent,
-  setImportContent,
-  newCase,
-  setNewCase,
-  handleCreateCase,
-  handleImport,
-  handleCreateVersion,
-  editingCase,
-  setEditingCase,
-  handleUpdateCase,
-  handleDeleteCase,
-  suiteId,
-  fetchSuite,
-  formatDate,
-  getSeverityColor,
-  suite,
-  router,
-}: {
+interface MainContentProps {
   suite: TestSuite | null;
   router: ReturnType<typeof useRouter>;
   handleCreateVersion: () => Promise<void>;
@@ -121,7 +94,6 @@ const MainContent = ({
   }>>;
   handleCreateCase: () => Promise<void>;
   handleImport: () => Promise<void>;
-  handleCreateVersion: () => Promise<void>;
   editingCase: TestCase | null;
   setEditingCase: React.Dispatch<React.SetStateAction<TestCase | null>>;
   handleUpdateCase: () => Promise<void>;
@@ -130,9 +102,33 @@ const MainContent = ({
   fetchSuite: () => Promise<void>;
   formatDate: (date: string) => string;
   getSeverityColor: (severity: string) => string;
-  suite: TestSuite | null;
-  router: ReturnType<typeof useRouter>;
-}) => (
+}
+
+const MainContent = ({
+  suite,
+  router,
+  handleCreateVersion,
+  showCreateCaseDialog,
+  setShowCreateCaseDialog,
+  showImportDialog,
+  setShowImportDialog,
+  importFormat,
+  setImportFormat,
+  importContent,
+  setImportContent,
+  newCase,
+  setNewCase,
+  handleCreateCase,
+  handleImport,
+  editingCase,
+  setEditingCase,
+  handleUpdateCase,
+  handleDeleteCase,
+  suiteId,
+  fetchSuite,
+  formatDate,
+  getSeverityColor,
+}: MainContentProps) => (
   !suite ? null : (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
@@ -297,7 +293,7 @@ const MainContent = ({
         <CardContent>
           {suite?.test_cases.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No test cases yet. Click "Add Test Case" to create one.</p>
+              <p className="text-muted-foreground">No test cases yet. Click &#34;Add Test Case&#34; to create one.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -433,11 +429,107 @@ const MainContent = ({
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingCase(null)}>Cancel</Button>
               <Button onClick={handleUpdateCase}>Save</Button>
-            </DialogFooter          </DialogContent>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       )}
     </div>
-  );
+  )
+);
+
+export default function SuiteDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const suiteId = params.id as string;
+  const { isAuthenticated, isLoading } = useAuth();
+  const [suite, setSuite] = useState<TestSuite | null>(null);
+  const [showCreateCaseDialog, setShowCreateCaseDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFormat, setImportFormat] = useState<"yaml" | "json">("yaml");
+  const [importContent, setImportContent] = useState("");
+  const [editingCase, setEditingCase] = useState<TestCase | null>(null);
+  const [newCase, setNewCase] = useState({
+    test_case_id: "",
+    category: "",
+    severity: "medium",
+    input: "",
+    expected_behavior_type: "exact_match",
+    expected_behavior_matcher: {},
+    metadata: {},
+  });
+
+  const fetchSuite = useCallback(async () => {
+    try {
+      const response = await api.get(`/suites/${suiteId}`);
+      setSuite(response.data);
+    } catch (error) {
+      console.error("Failed to fetch suite:", error);
+    }
+  }, [suiteId]);
+
+  useEffect(() => {
+    fetchSuite();
+  }, [fetchSuite]);
+
+  const handleCreateVersion = async () => {
+    try {
+      await api.post(`/suites/${suiteId}/versions`, {});
+      fetchSuite();
+    } catch (error) {
+      console.error("Failed to create version:", error);
+    }
+  };
+
+  const handleCreateCase = async () => {
+    try {
+      await api.post(`/suites/${suiteId}/test-cases`, newCase);
+      setShowCreateCaseDialog(false);
+      setNewCase({
+        test_case_id: "",
+        category: "",
+        severity: "medium",
+        input: "",
+        expected_behavior_type: "exact_match",
+        expected_behavior_matcher: {},
+        metadata: {},
+      });
+      fetchSuite();
+    } catch (error) {
+      console.error("Failed to create test case:", error);
+    }
+  };
+
+  const handleUpdateCase = async () => {
+    if (!editingCase) return;
+    try {
+      await api.put(`/suites/${suiteId}/test-cases/${editingCase.id}`, editingCase);
+      setEditingCase(null);
+      fetchSuite();
+    } catch (error) {
+      console.error("Failed to update test case:", error);
+    }
+  };
+
+  const handleDeleteCase = async (caseId: string) => {
+    if (!confirm("Are you sure you want to delete this test case?")) return;
+    try {
+      await api.delete(`/suites/${suiteId}/test-cases/${caseId}`);
+      fetchSuite();
+    } catch (error) {
+      console.error("Failed to delete test case:", error);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      await api.post(`/suites/${suiteId}/import`, { content: importContent, format: importFormat });
+      setShowImportDialog(false);
+      setImportContent("");
+      fetchSuite();
+    } catch (error) {
+      console.error("Failed to import suite:", error);
+    }
+  };
 
   if (isLoading || !isAuthenticated) {
     return <LoadingScreen />;
@@ -463,7 +555,6 @@ const MainContent = ({
     setNewCase={setNewCase}
     handleCreateCase={handleCreateCase}
     handleImport={handleImport}
-    handleCreateVersion={handleCreateVersion}
     editingCase={editingCase}
     setEditingCase={setEditingCase}
     handleUpdateCase={handleUpdateCase}
@@ -472,7 +563,5 @@ const MainContent = ({
     fetchSuite={fetchSuite}
     formatDate={formatDate}
     getSeverityColor={getSeverityColor}
-    suite={suite}
-    router={router}
   />;
 }

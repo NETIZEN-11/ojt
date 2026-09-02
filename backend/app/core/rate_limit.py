@@ -26,7 +26,9 @@ class RateLimiter:
                     del self._windows[key]
             self._last_cleanup = now
 
-    def check_rate_limit(self, key: str, limit: int = None, window: int = None) -> tuple[bool, int, int]:
+    def check_rate_limit(
+        self, key: str, limit: int = None, window: int = None
+    ) -> tuple[bool, int, int]:
         limit = limit or settings.RATE_LIMIT_REQUESTS
         window = window or settings.RATE_LIMIT_WINDOW_SECONDS
         self._cleanup()
@@ -104,7 +106,9 @@ def rate_limit(limit: int = None, window: int = None):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request = kwargs.get("request") or (args[0] if args and isinstance(args[0], Request) else None)
+            request = kwargs.get("request") or (
+                args[0] if args and isinstance(args[0], Request) else None
+            )
             if request:
                 client_ip = request.client.host if request.client else "unknown"
                 key = f"ratelimit:{client_ip}:{request.url.path}"
@@ -121,5 +125,7 @@ def rate_limit(limit: int = None, window: int = None):
                         },
                     )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator

@@ -34,10 +34,15 @@ def run_redteam_attack(self, target_agent_id: str, strategy: dict = None):
             )
 
             from app.redteam.agent import AttackStrategy
+
             attack_strategy = AttackStrategy(**(strategy or {}))
 
             result = await redteam_agent.run(attack_strategy)
-            logger.info("redteam_task_completed", target_agent_id=target_agent_id, verdict=result.final_verdict)
+            logger.info(
+                "redteam_task_completed",
+                target_agent_id=target_agent_id,
+                verdict=result.final_verdict,
+            )
             return {"verdict": result.final_verdict.value if result.final_verdict else None}
 
     return asyncio.run(_run())
@@ -50,6 +55,7 @@ def generate_adversarial_tests(self, categories: list = None, count: int = 10):
     async def _run():
         generator = AdversarialGenerator()
         from app.domain.enums import TestCaseCategory
+
         category_enums = [TestCaseCategory(c) for c in (categories or [])]
         candidates = await generator.generate_candidates(category_enums, count)
         logger.info("adversarial_generation_completed", generated=len(candidates))

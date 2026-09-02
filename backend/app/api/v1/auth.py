@@ -47,7 +47,11 @@ class RegisterRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db), user_repo: UserRepository = Depends(get_user_repo)):
+async def login(
+    request: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repo),
+):
     user = await user_repo.get_by_email_or_username(request.username)
     if not user or not verify_password(request.password, user.hashed_password):
         logger.warning("login_failed", username=request.username)
@@ -60,10 +64,22 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db), user_
     scopes = get_scopes_for_roles(roles)
 
     access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email, "roles": roles, "scopes": scopes}
+        data={
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
+        }
     )
     refresh_token = create_refresh_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email, "roles": roles, "scopes": scopes}
+        data={
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
+        }
     )
 
     user.last_login = datetime.now(UTC)
@@ -85,10 +101,22 @@ async def refresh_token(request: RefreshRequest):
         raise AuthenticationError("Invalid refresh token")
 
     access_token = create_access_token(
-        data={"sub": token_data.sub, "username": token_data.username, "email": token_data.email, "roles": token_data.roles, "scopes": token_data.scopes}
+        data={
+            "sub": token_data.sub,
+            "username": token_data.username,
+            "email": token_data.email,
+            "roles": token_data.roles,
+            "scopes": token_data.scopes,
+        }
     )
     new_refresh_token = create_refresh_token(
-        data={"sub": token_data.sub, "username": token_data.username, "email": token_data.email, "roles": token_data.roles, "scopes": token_data.scopes}
+        data={
+            "sub": token_data.sub,
+            "username": token_data.username,
+            "email": token_data.email,
+            "roles": token_data.roles,
+            "scopes": token_data.scopes,
+        }
     )
 
     return TokenResponse(
@@ -99,7 +127,11 @@ async def refresh_token(request: RefreshRequest):
 
 
 @router.post("/register", response_model=TokenResponse)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db), user_repo: UserRepository = Depends(get_user_repo)):
+async def register(
+    request: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repo),
+):
     if await user_repo.get_by_email(request.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -121,10 +153,22 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db),
     scopes = get_scopes_for_roles(roles)
 
     access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email, "roles": roles, "scopes": scopes}
+        data={
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
+        }
     )
     refresh_token = create_refresh_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email, "roles": roles, "scopes": scopes}
+        data={
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
+        }
     )
 
     return TokenResponse(

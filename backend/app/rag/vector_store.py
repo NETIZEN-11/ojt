@@ -28,7 +28,9 @@ class VectorStore:
             self.collections[full_name] = self.client.get_or_create_collection(full_name)
         return self.collections[full_name]
 
-    async def add(self, collection: str, text: str, embedding: list[float], metadata: dict[str, Any] = None):
+    async def add(
+        self, collection: str, text: str, embedding: list[float], metadata: dict[str, Any] = None
+    ):
         col = self._get_collection(collection)
         doc_id = str(uuid4())
         col.add(
@@ -39,7 +41,13 @@ class VectorStore:
         )
         return doc_id
 
-    async def add_batch(self, collection: str, texts: list[str], embeddings: list[list[float]], metadatas: list[dict[str, Any]] = None):
+    async def add_batch(
+        self,
+        collection: str,
+        texts: list[str],
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]] = None,
+    ):
         col = self._get_collection(collection)
         ids = [str(uuid4()) for _ in texts]
         col.add(
@@ -50,7 +58,9 @@ class VectorStore:
         )
         return ids
 
-    async def search(self, collection: str, query_embedding: list[float], top_k: int = 5) -> list[tuple[str, float, dict[str, Any]]]:
+    async def search(
+        self, collection: str, query_embedding: list[float], top_k: int = 5
+    ) -> list[tuple[str, float, dict[str, Any]]]:
         col = self._get_collection(collection)
         results = col.query(
             query_embeddings=[query_embedding],
@@ -63,14 +73,18 @@ class VectorStore:
             for i, doc_id in enumerate(results["ids"][0]):
                 distance = results["distances"][0][i] if results["distances"] else 1.0
                 similarity = 1.0 - distance
-                output.append((
-                    results["documents"][0][i],
-                    similarity,
-                    results["metadatas"][0][i] if results["metadatas"] else {},
-                ))
+                output.append(
+                    (
+                        results["documents"][0][i],
+                        similarity,
+                        results["metadatas"][0][i] if results["metadatas"] else {},
+                    )
+                )
         return output
 
-    async def search_by_text(self, collection: str, query_text: str, top_k: int = 5) -> list[tuple[str, float, dict[str, Any]]]:
+    async def search_by_text(
+        self, collection: str, query_text: str, top_k: int = 5
+    ) -> list[tuple[str, float, dict[str, Any]]]:
         embedding = await self.embedding_provider.embed(query_text)
         return await self.search(collection, embedding, top_k)
 

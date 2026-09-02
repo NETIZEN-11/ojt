@@ -59,7 +59,9 @@ async def list_baselines(
     limit: int = 100,
     suite_id: UUID | None = None,
     baseline_repo: BaselineRepository = Depends(get_baseline_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     filters = {}
     if suite_id:
@@ -109,7 +111,9 @@ async def create_baseline(
 async def get_active_baseline(
     suite_id: UUID,
     baseline_repo: BaselineRepository = Depends(get_baseline_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     baseline = await baseline_repo.get_active_for_suite(suite_id)
     if not baseline:
@@ -121,7 +125,9 @@ async def get_active_baseline(
 async def get_baseline(
     baseline_id: UUID,
     baseline_repo: BaselineRepository = Depends(get_baseline_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     baseline = await baseline_repo.get(baseline_id)
     if not baseline:
@@ -133,7 +139,9 @@ async def get_baseline(
 async def list_baseline_items(
     baseline_id: UUID,
     baseline_item_repo: BaselineItemRepository = Depends(get_baseline_item_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     items = await baseline_item_repo.list_by_baseline(baseline_id)
     return [BaselineItemResponse.model_validate(item) for item in items]

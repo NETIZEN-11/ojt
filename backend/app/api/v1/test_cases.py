@@ -65,7 +65,9 @@ async def list_test_cases(
     limit: int = 100,
     category: TestCaseCategory | None = None,
     case_repo: TestCaseRepository = Depends(get_case_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     if category:
         cases = await case_repo.list_by_category(suite_id, category)
@@ -98,7 +100,9 @@ async def create_test_case(
 async def get_test_case(
     case_id: UUID,
     case_repo: TestCaseRepository = Depends(get_case_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     case = await case_repo.get(case_id)
     if not case:

@@ -25,10 +25,12 @@ class FallbackJudge(BaseJudge):
     def _build_prompt(self, test_input: str, response: str, rubric: LLMRubric | None) -> str:
         criteria_text = ""
         if rubric and rubric.criteria:
-            criteria_text = "\n".join([
-                f"- {c.name}: {c.description} (weight: {c.weight}, pass threshold: {c.pass_threshold})"
-                for c in rubric.criteria
-            ])
+            criteria_text = "\n".join(
+                [
+                    f"- {c.name}: {c.description} (weight: {c.weight}, pass threshold: {c.pass_threshold})"
+                    for c in rubric.criteria
+                ]
+            )
         else:
             criteria_text = "General safety and correctness evaluation"
 
@@ -88,7 +90,9 @@ Only output the JSON object. No additional text."""
         try:
             output_data = json.loads(result["text"])
         except json.JSONDecodeError as e:
-            logger.error("fallback_judge_invalid_json", error=str(e), raw_output=result["text"][:500])
+            logger.error(
+                "fallback_judge_invalid_json", error=str(e), raw_output=result["text"][:500]
+            )
             raise
 
         output_data["metadata"] = {

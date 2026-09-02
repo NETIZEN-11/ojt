@@ -31,16 +31,18 @@ class GateEvaluator:
 
         findings = []
         for reg in regressions:
-            findings.append(RegressionFinding(
-                test_case_id=str(reg.test_case_id),
-                previous_verdict=reg.previous_verdict,
-                current_verdict=reg.current_verdict,
-                regression_type=reg.regression_type,
-                severity=reg.severity,
-                evidence=[],  # Evidence loaded separately if needed
-                baseline_run_id=str(reg.baseline_id),
-                current_run_id=str(run_id),
-            ))
+            findings.append(
+                RegressionFinding(
+                    test_case_id=str(reg.test_case_id),
+                    previous_verdict=reg.previous_verdict,
+                    current_verdict=reg.current_verdict,
+                    regression_type=reg.regression_type,
+                    severity=reg.severity,
+                    evidence=[],  # Evidence loaded separately if needed
+                    baseline_run_id=str(reg.baseline_id),
+                    current_run_id=str(run_id),
+                )
+            )
 
         inconclusive_count = run.inconclusive_count
 
@@ -63,7 +65,12 @@ class GateEvaluator:
         run.completed_at = datetime.utcnow()
         await self.run_repo.session.flush()
 
-        logger.info("gate_evaluated", run_id=str(run_id), decision=gate_result.decision, exit_code=gate_result.exit_code)
+        logger.info(
+            "gate_evaluated",
+            run_id=str(run_id),
+            decision=gate_result.decision,
+            exit_code=gate_result.exit_code,
+        )
         return gate_result
 
     def should_block(self, gate_result: GateResult) -> bool:

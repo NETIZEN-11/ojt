@@ -78,19 +78,21 @@ class TracedOperation:
 def trace_operation(operation_name: str, attributes: dict = None):
     def decorator(func):
         import functools
+
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
             tracer = get_tracer(func.__module__)
-            with TracedOperation(tracer, operation_name, attributes) as span:
+            with TracedOperation(tracer, operation_name, attributes) as _span:
                 return await func(*args, **kwargs)
 
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             tracer = get_tracer(func.__module__)
-            with TracedOperation(tracer, operation_name, attributes) as span:
+            with TracedOperation(tracer, operation_name, attributes) as _span:
                 return func(*args, **kwargs)
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

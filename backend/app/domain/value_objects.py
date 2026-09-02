@@ -23,6 +23,7 @@ class MatcherConfig(BaseModel):
     def validate_regex(cls, v: str | None) -> str | None:
         if v is not None:
             import re
+
             try:
                 re.compile(v)
             except re.error as e:

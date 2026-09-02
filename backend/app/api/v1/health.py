@@ -54,8 +54,6 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
         pass
 
     all_ready = all(checks.values())
-    status_code = 200 if all_ready else 503
-
     return {"ready": all_ready, "checks": checks}
 
 
@@ -63,4 +61,5 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 async def metrics():
     from fastapi.responses import Response
     from prometheus_client import generate_latest
+
     return Response(content=generate_latest(), media_type="text/plain")

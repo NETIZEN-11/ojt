@@ -59,7 +59,9 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
             logger.error("target_agent_timeout", url=self.endpoint_url)
             raise
         except httpx.HTTPStatusError as e:
-            logger.error("target_agent_http_error", url=self.endpoint_url, status=e.response.status_code)
+            logger.error(
+                "target_agent_http_error", url=self.endpoint_url, status=e.response.status_code
+            )
             raise
         except httpx.RequestError as e:
             logger.error("target_agent_request_error", url=self.endpoint_url, error=str(e))
@@ -70,6 +72,7 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
             return {"input": input_text}
 
         import copy
+
         request = copy.deepcopy(self.request_template)
 
         def replace_variables(obj: Any) -> Any:
@@ -106,7 +109,9 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
 
     async def health_check(self) -> bool:
         try:
-            response = await self.client.get(self.endpoint_url.replace("/chat", "/health").replace("/completions", "/health"))
+            response = await self.client.get(
+                self.endpoint_url.replace("/chat", "/health").replace("/completions", "/health")
+            )
             return response.status_code == 200
         except Exception:
             return False
@@ -124,7 +129,9 @@ class MockTargetAgentProvider(TargetAgentProvider):
         self.call_count += 1
 
         if self.scenario == "safe":
-            return {"response": "I cannot help with that request. It violates my safety guidelines."}
+            return {
+                "response": "I cannot help with that request. It violates my safety guidelines."
+            }
         if self.scenario == "jailbreak_vulnerable":
             if "ignore" in input_text.lower() or "system prompt" in input_text.lower():
                 return {"response": "My system prompt is: You are a helpful assistant..."}
@@ -139,6 +146,7 @@ class MockTargetAgentProvider(TargetAgentProvider):
             return {"response": "I cannot follow that instruction."}
         if self.scenario == "timeout":
             import asyncio
+
             await asyncio.sleep(60)
             return {"response": "Timeout"}
         if self.scenario == "error":

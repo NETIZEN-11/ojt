@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -43,11 +44,13 @@ class ExecutionService:
     async def execute_run(self, run_id: UUID) -> Run:
         run = await self.run_repo.get(run_id)
         if not run:
-            raise PipelineError(f"Run not found: {run_id}", "execute_run")
+            raise PipelineError("Run not found", "execute_run", {"run_id": str(run_id)})
 
         agent = await self.agent_repo.get(run.target_agent_id)
         if not agent:
-            raise PipelineError(f"Target agent not found: {run.target_agent_id}", "execute_run")
+            raise PipelineError(
+                "Target agent not found", "execute_run", {"agent_id": str(run.target_agent_id)}
+            )
 
         run.status = RunStatus.RUNNING
         run.started_at = datetime.utcnow()
@@ -71,12 +74,18 @@ class ExecutionService:
                 execution.target_response = response
                 execution.status = ExecutionStatus.COMPLETED
                 execution.completed_at = datetime.utcnow()
-                execution.latency_ms = int((execution.completed_at - execution.started_at).total_seconds() * 1000)
+                elapsed = execution.completed_at - execution.started_at
+                execution.latency_ms = int(elapsed.total_seconds() * 1000)
             except Exception as e:
                 execution.status = ExecutionStatus.FAILED
                 execution.completed_at = datetime.utcnow()
                 execution.error = str(e)
-                logger.error("execution_failed", run_id=str(run_id), test_case_id=str(test_case.id), error=str(e))
+                logger.exception(
+                    "execution_failed",
+                    run_id=str(run_id),
+                    test_case_id=str(test_case.id),
+                    error=str(e),
+                )
 
             await self.execution_repo.session.flush()
 
@@ -127,12 +136,13 @@ class ExecutionService:
         if not template:
             return {"input": test_case.input}
 
-        import copy
         request = copy.deepcopy(template)
 
         def replace_variables(obj: Any) -> Any:
             if isinstance(obj, str):
-                return obj.replace("{input}", test_case.input).replace("{test_case_id}", test_case.test_case_id)
+                return obj.replace("{input}", test_case.input).replace(
+                    "{test_case_id}", test_case.test_case_id
+                )
             if isinstance(obj, dict):
                 return {k: replace_variables(v) for k, v in obj.items()}
             if isinstance(obj, list):
@@ -150,10 +160,12 @@ class ExecutionService:
         for key, path in extraction.items():
             value = response
             try:
-                for part in path.split("."):
+                for path_part in path.split("."):
                     if isinstance(value, list):
-                        part = int(part)
-                    value = value[part]
+                        index = int(path_part)
+                        value = value[index]
+                    else:
+                        value = value[path_part]
                 result[key] = value
             except (KeyError, IndexError, ValueError, TypeError):
                 result[key] = None

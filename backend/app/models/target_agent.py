@@ -45,13 +45,19 @@ class TargetAgent(Base):
         nullable=False,
     )
     health_check_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    last_health_check: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    created_by: Mapped[PG_UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    last_health_check: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    created_by: Mapped[PG_UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     runs: Mapped[list["Run"]] = relationship(back_populates="target_agent", lazy="dynamic")
 
-    __table_args__ = (
-        Index("ix_target_agents_status_allowed", "status", "allowed"),
-    )
+    __table_args__ = (Index("ix_target_agents_status_allowed", "status", "allowed"),)

@@ -62,9 +62,7 @@ def run_evaluation(self, run_id: str):
                 await execution_service.execute_run(run_uuid)
 
                 ScoringServiceClass = get_scoring_service()
-                scoring_service = ScoringServiceClass(
-                    execution_repo, result_repo, case_repo
-                )
+                scoring_service = ScoringServiceClass(execution_repo, result_repo, case_repo)
                 await scoring_service.score_run(run_uuid)
 
                 baseline = await baseline_repo.get_active_for_suite(run.suite_id)
@@ -115,6 +113,7 @@ def run_seeded_regression_benchmark(self):
 
     async def _run():
         from scripts.run_seeded_regression import run_seeded_regression
+
         result = await run_seeded_regression()
         logger.info("seeded_regression_benchmark_completed", result=result)
         return result

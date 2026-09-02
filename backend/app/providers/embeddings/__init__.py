@@ -87,7 +87,8 @@ class MockEmbeddingProvider(EmbeddingProvider):
 
     async def embed(self, text: str) -> list[float]:
         import hashlib
-        hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
+
+        hash_val = int(hashlib.sha256(text.encode()).hexdigest(), 16)
         return [(hash_val >> i & 1) * 0.01 for i in range(self.dimension)]
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
@@ -96,7 +97,9 @@ class MockEmbeddingProvider(EmbeddingProvider):
 
 class EmbeddingProviderFactory:
     @staticmethod
-    def create_provider(provider: str, model: str, api_key: str, base_url: str = "") -> EmbeddingProvider:
+    def create_provider(
+        provider: str, model: str, api_key: str, base_url: str = ""
+    ) -> EmbeddingProvider:
         if provider == "openai":
             return OpenAIEmbeddingProvider(model, api_key, base_url)
         if provider == "anthropic":

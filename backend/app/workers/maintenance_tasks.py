@@ -75,6 +75,7 @@ def health_check_dependencies():
                 pass
 
         import redis
+
         try:
             r = redis.from_url(settings.REDIS_URL)
             r.ping()
@@ -83,6 +84,7 @@ def health_check_dependencies():
             pass
 
         import chromadb
+
         try:
             client = chromadb.HttpClient(host=settings.CHROMA_HOST, port=settings.CHROMA_PORT)
             client.heartbeat()
@@ -91,6 +93,7 @@ def health_check_dependencies():
             pass
 
         import boto3
+
         try:
             client = boto3.client("s3", endpoint_url=settings.S3_ENDPOINT_URL)
             client.head_bucket(Bucket=settings.S3_BUCKET)

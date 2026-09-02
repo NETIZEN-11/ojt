@@ -36,10 +36,25 @@ class Run(Base):
     __tablename__ = "runs"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    target_agent_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("target_agents.id", ondelete="CASCADE"), nullable=False, index=True)
-    suite_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("test_suites.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_agent_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("target_agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    suite_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("test_suites.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     suite_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    baseline_id: Mapped[PG_UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("baselines.id", ondelete="SET NULL"), nullable=True, index=True)
+    baseline_id: Mapped[PG_UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("baselines.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     status: Mapped[RunStatus] = mapped_column(
         SQLEnum(RunStatus, native_enum=False, create_constraint=True),
         default=RunStatus.QUEUED,
@@ -64,17 +79,31 @@ class Run(Base):
     total_cost_usd: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     total_latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    created_by: Mapped[PG_UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    created_by: Mapped[PG_UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     target_agent: Mapped["TargetAgent"] = relationship(back_populates="runs", lazy="joined")
     suite: Mapped["TestSuite"] = relationship(back_populates="runs", lazy="joined")
     baseline: Mapped[Optional["Baseline"]] = relationship(foreign_keys=[baseline_id], lazy="joined")
-    executions: Mapped[list["Execution"]] = relationship(back_populates="run", lazy="dynamic", cascade="all, delete-orphan")
-    results: Mapped[list["Result"]] = relationship(back_populates="run", lazy="dynamic", cascade="all, delete-orphan")
-    regressions: Mapped[list["Regression"]] = relationship(back_populates="run", lazy="dynamic", cascade="all, delete-orphan")
-    reviews: Mapped[list["ReviewQueue"]] = relationship(back_populates="run", lazy="dynamic", cascade="all, delete-orphan")
+    executions: Mapped[list["Execution"]] = relationship(
+        back_populates="run", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    results: Mapped[list["Result"]] = relationship(
+        back_populates="run", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    regressions: Mapped[list["Regression"]] = relationship(
+        back_populates="run", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    reviews: Mapped[list["ReviewQueue"]] = relationship(
+        back_populates="run", lazy="dynamic", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_runs_status_created", "status", "created_at"),
@@ -86,8 +115,15 @@ class Execution(Base):
     __tablename__ = "executions"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    run_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
-    test_case_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("test_cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    test_case_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("test_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     status: Mapped[ExecutionStatus] = mapped_column(
         SQLEnum(ExecutionStatus, native_enum=False, create_constraint=True),
         default=ExecutionStatus.QUEUED,
@@ -101,11 +137,15 @@ class Execution(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     run: Mapped["Run"] = relationship(back_populates="executions", lazy="joined")
     test_case: Mapped["TestCase"] = relationship(back_populates="executions", lazy="joined")
-    result: Mapped[Optional["Result"]] = relationship(back_populates="execution", lazy="joined", uselist=False)
+    result: Mapped[Optional["Result"]] = relationship(
+        back_populates="execution", lazy="joined", uselist=False
+    )
 
     __table_args__ = (
         Index("ix_executions_run_status", "run_id", "status"),
@@ -117,9 +157,22 @@ class Result(Base):
     __tablename__ = "results"
 
     id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    execution_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    run_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
-    test_case_id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("test_cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("executions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    run_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    test_case_id: Mapped[PG_UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("test_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     verdict: Mapped[Verdict] = mapped_column(
         SQLEnum(Verdict, native_enum=False, create_constraint=True),
         nullable=False,
@@ -138,7 +191,9 @@ class Result(Base):
     tokens_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     estimated_cost: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     errors: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     execution: Mapped["Execution"] = relationship(back_populates="result", lazy="joined")
     run: Mapped["Run"] = relationship(back_populates="results", lazy="joined")

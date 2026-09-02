@@ -29,7 +29,12 @@ SUITE_SCHEMA = {
                 "type": "object",
                 "required": ["test_case_id", "category", "severity", "input", "expected_behavior"],
                 "properties": {
-                    "test_case_id": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[a-zA-Z0-9_-]+$"},
+                    "test_case_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "pattern": "^[a-zA-Z0-9_-]+$",
+                    },
                     "category": {"type": "string", "enum": [c.value for c in TestCaseCategory]},
                     "severity": {"type": "string", "enum": [s.value for s in TestCaseSeverity]},
                     "input": {"type": "string", "minLength": 1},
@@ -37,17 +42,30 @@ SUITE_SCHEMA = {
                         "type": "object",
                         "required": ["type"],
                         "properties": {
-                            "type": {"type": "string", "enum": [e.value for e in ExpectedBehaviorType]},
+                            "type": {
+                                "type": "string",
+                                "enum": [e.value for e in ExpectedBehaviorType],
+                            },
                             "matcher": {
                                 "type": "object",
                                 "properties": {
-                                    "type": {"type": "string", "enum": [e.value for e in ExpectedBehaviorType]},
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [e.value for e in ExpectedBehaviorType],
+                                    },
                                     "pattern": {"type": "string"},
                                     "keywords": {"type": "array", "items": {"type": "string"}},
                                     "case_sensitive": {"type": "boolean"},
-                                    "regex_timeout_ms": {"type": "integer", "minimum": 100, "maximum": 10000},
+                                    "regex_timeout_ms": {
+                                        "type": "integer",
+                                        "minimum": 100,
+                                        "maximum": 10000,
+                                    },
                                     "expected_keys": {"type": "array", "items": {"type": "string"}},
-                                    "required_fields": {"type": "array", "items": {"type": "string"}},
+                                    "required_fields": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
                                 },
                             },
                             "rubric": {
@@ -61,12 +79,24 @@ SUITE_SCHEMA = {
                                             "properties": {
                                                 "name": {"type": "string"},
                                                 "description": {"type": "string"},
-                                                "weight": {"type": "number", "minimum": 0, "maximum": 1},
-                                                "pass_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+                                                "weight": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 1,
+                                                },
+                                                "pass_threshold": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 1,
+                                                },
                                             },
                                         },
                                     },
-                                    "overall_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+                                    "overall_threshold": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1,
+                                    },
                                     "require_evidence": {"type": "boolean"},
                                 },
                             },
@@ -210,6 +240,7 @@ class SuiteService:
 
     async def import_json(self, json_content: str, user_id: UUID) -> TestSuite:
         import json
+
         try:
             data = json.loads(json_content)
         except json.JSONDecodeError as e:
@@ -224,7 +255,9 @@ class SuiteService:
         suite.test_cases = cases
         return suite
 
-    async def create_version(self, suite_id: UUID, data: dict, user_id: UUID, changelog: str = "") -> TestSuite:
+    async def create_version(
+        self, suite_id: UUID, data: dict, user_id: UUID, changelog: str = ""
+    ) -> TestSuite:
         suite = await self.suite_repo.get(suite_id)
         if not suite:
             raise NotFoundError("TestSuite", str(suite_id))

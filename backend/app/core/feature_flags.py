@@ -87,10 +87,12 @@ feature_flag_service = FeatureFlagService()
 def requires_feature(flag_name: str):
     def decorator(func):
         import functools
+
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             if not feature_flag_service.is_enabled(flag_name):
                 from app.core.exceptions import RedTeamException
+
                 raise RedTeamException(
                     f"Feature '{flag_name}' is not enabled",
                     "FEATURE_DISABLED",
@@ -98,5 +100,7 @@ def requires_feature(flag_name: str):
                     404,
                 )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator

@@ -39,7 +39,9 @@ async def list_results_by_run(
     run_id: UUID,
     verdict: Verdict | None = None,
     result_repo: ResultRepository = Depends(get_result_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     if verdict:
         results = await result_repo.list_by_run_and_verdict(run_id, verdict)
@@ -52,7 +54,9 @@ async def list_results_by_run(
 async def get_result(
     result_id: UUID,
     result_repo: ResultRepository = Depends(get_result_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     result = await result_repo.get(result_id)
     if not result:

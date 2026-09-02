@@ -36,6 +36,7 @@ class AttackPlanner:
                 response_format={"type": "json_object"},
             )
             import json
+
             return json.loads(result["text"])
         except Exception as e:
             logger.warning("planner_llm_failed", error=str(e))
@@ -49,10 +50,12 @@ class AttackPlanner:
     ) -> str:
         attempts_str = ""
         if previous_attempts:
-            attempts_str = "\nPrevious Attempts:\n" + "\n".join([
-                f"- Turn {a.get('turn')}: {a.get('prompt')[:100]} -> {a.get('result', 'unknown')}"
-                for a in previous_attempts
-            ])
+            attempts_str = "\nPrevious Attempts:\n" + "\n".join(
+                [
+                    f"- Turn {a.get('turn')}: {a.get('prompt')[:100]} -> {a.get('result', 'unknown')}"
+                    for a in previous_attempts
+                ]
+            )
 
         return f"""You are an expert red-team planner. Create a multi-turn attack strategy.
 
@@ -83,6 +86,7 @@ class MockAttackPlanner(AttackPlanner):
     def _default_plan(self, objective: str, target_context: dict[str, Any]) -> dict[str, Any]:
         strategies = ["direct", "gradual", "roleplay", "encoding", "hypothetical"]
         import random
+
         return {
             "strategy": random.choice(strategies),
             "next_prompt": f"Test attack for: {objective}",

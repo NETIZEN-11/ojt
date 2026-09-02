@@ -1,4 +1,3 @@
-
 from app.core.config import get_settings
 from app.domain.enums import Verdict
 from app.domain.value_objects import EvidenceItem, MatcherConfig
@@ -12,9 +11,11 @@ class ExactMatcher(BaseMatcher):
         self, response: str, config: Optional[MatcherConfig]
     ) -> tuple[Verdict, float, list[EvidenceItem]]:
         if not config or not config.pattern:
-            return Verdict.INCONCLUSIVE, 0.0, [
-                self._create_evidence("exact_matcher", "No pattern configured", False)
-            ]
+            return (
+                Verdict.INCONCLUSIVE,
+                0.0,
+                [self._create_evidence("exact_matcher", "No pattern configured", False)],
+            )
 
         expected = config.pattern
         case_sensitive = config.case_sensitive or settings.EXACT_MATCH_CASE_SENSITIVE

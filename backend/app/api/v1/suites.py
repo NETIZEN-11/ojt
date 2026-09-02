@@ -8,7 +8,7 @@ from app.api.deps import TokenData, get_case_repo, get_suite_repo, require_role
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.domain.enums import TestCaseCategory, TestCaseSeverity
-from app.models.test_suite import TestCase
+from app.models.test_suite import TestCase, TestCaseVersion
 from app.repositories.suites import TestCaseRepository, TestSuiteRepository
 from app.services.suite_service import SuiteService
 
@@ -75,23 +75,27 @@ async def list_suites(
     limit: int = 100,
     suite_repo: TestSuiteRepository = Depends(get_suite_repo),
     case_repo: TestCaseRepository = Depends(get_case_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     suites = await suite_repo.list(skip=skip, limit=limit, filters={"is_active": True})
     result = []
     for suite in suites:
         cases = await case_repo.list_by_suite(suite.id)
-        result.append(TestSuiteResponse(
-            id=suite.id,
-            name=suite.name,
-            description=suite.description,
-            version=suite.version,
-            schema_version=suite.schema_version,
-            is_active=suite.is_active,
-            created_at=suite.created_at,
-            updated_at=suite.updated_at,
-            test_cases=[_build_case_response(c) for c in cases],
-        ))
+        result.append(
+            TestSuiteResponse(
+                id=suite.id,
+                name=suite.name,
+                description=suite.description,
+                version=suite.version,
+                schema_version=suite.schema_version,
+                is_active=suite.is_active,
+                created_at=suite.created_at,
+                updated_at=suite.updated_at,
+                test_cases=[_build_case_response(c) for c in cases],
+            )
+        )
     return result
 
 
@@ -106,9 +110,14 @@ async def create_suite(
     created = await service.create_suite(suite.model_dump(), UUID(current_user.sub))
     cases = await case_repo.list_by_suite(created.id)
     return TestSuiteResponse(
-        id=created.id, name=created.name, description=created.description,
-        version=created.version, schema_version=created.schema_version, is_active=created.is_active,
-        created_at=created.created_at, updated_at=created.updated_at,
+        id=created.id,
+        name=created.name,
+        description=created.description,
+        version=created.version,
+        schema_version=created.schema_version,
+        is_active=created.is_active,
+        created_at=created.created_at,
+        updated_at=created.updated_at,
         test_cases=[_build_case_response(c) for c in cases],
     )
 
@@ -140,9 +149,14 @@ async def import_yaml(
     created = await service.import_yaml(content.decode(), UUID(current_user.sub))
     cases = await case_repo.list_by_suite(created.id)
     return TestSuiteResponse(
-        id=created.id, name=created.name, description=created.description,
-        version=created.version, schema_version=created.schema_version, is_active=created.is_active,
-        created_at=created.created_at, updated_at=created.updated_at,
+        id=created.id,
+        name=created.name,
+        description=created.description,
+        version=created.version,
+        schema_version=created.schema_version,
+        is_active=created.is_active,
+        created_at=created.created_at,
+        updated_at=created.updated_at,
         test_cases=[_build_case_response(c) for c in cases],
     )
 
@@ -159,9 +173,14 @@ async def import_json(
     created = await service.import_json(content.decode(), UUID(current_user.sub))
     cases = await case_repo.list_by_suite(created.id)
     return TestSuiteResponse(
-        id=created.id, name=created.name, description=created.description,
-        version=created.version, schema_version=created.schema_version, is_active=created.is_active,
-        created_at=created.created_at, updated_at=created.updated_at,
+        id=created.id,
+        name=created.name,
+        description=created.description,
+        version=created.version,
+        schema_version=created.schema_version,
+        is_active=created.is_active,
+        created_at=created.created_at,
+        updated_at=created.updated_at,
         test_cases=[_build_case_response(c) for c in cases],
     )
 
@@ -171,7 +190,9 @@ async def get_suite(
     suite_id: UUID,
     suite_repo: TestSuiteRepository = Depends(get_suite_repo),
     case_repo: TestCaseRepository = Depends(get_case_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     service = SuiteService(suite_repo, case_repo)
     suite = await service.get_suite_with_cases(suite_id)
@@ -179,9 +200,14 @@ async def get_suite(
         raise NotFoundError("TestSuite", str(suite_id))
     cases = await case_repo.list_by_suite(suite.id)
     return TestSuiteResponse(
-        id=suite.id, name=suite.name, description=suite.description,
-        version=suite.version, schema_version=suite.schema_version, is_active=suite.is_active,
-        created_at=suite.created_at, updated_at=suite.updated_at,
+        id=suite.id,
+        name=suite.name,
+        description=suite.description,
+        version=suite.version,
+        schema_version=suite.schema_version,
+        is_active=suite.is_active,
+        created_at=suite.created_at,
+        updated_at=suite.updated_at,
         test_cases=[_build_case_response(c) for c in cases],
     )
 
@@ -196,12 +222,19 @@ async def create_version(
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
 ):
     service = SuiteService(suite_repo, case_repo)
-    updated = await service.create_version(suite_id, suite.model_dump(), UUID(current_user.sub), changelog)
+    updated = await service.create_version(
+        suite_id, suite.model_dump(), UUID(current_user.sub), changelog
+    )
     cases = await case_repo.list_by_suite(updated.id)
     return TestSuiteResponse(
-        id=updated.id, name=updated.name, description=updated.description,
-        version=updated.version, schema_version=updated.schema_version, is_active=updated.is_active,
-        created_at=updated.created_at, updated_at=updated.updated_at,
+        id=updated.id,
+        name=updated.name,
+        description=updated.description,
+        version=updated.version,
+        schema_version=updated.schema_version,
+        is_active=updated.is_active,
+        created_at=updated.created_at,
+        updated_at=updated.updated_at,
         test_cases=[_build_case_response(c) for c in cases],
     )
 
@@ -210,12 +243,18 @@ async def create_version(
 async def list_versions(
     suite_id: UUID,
     suite_repo: TestSuiteRepository = Depends(get_suite_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     from app.repositories.suites import TestSuiteVersionRepository
+
     version_repo = TestSuiteVersionRepository(suite_repo.session)
     versions = await version_repo.list(filters={"suite_id": suite_id})
-    return [{"version": v.version, "created_at": v.created_at.isoformat(), "changelog": v.changelog} for v in versions]
+    return [
+        {"version": v.version, "created_at": v.created_at.isoformat(), "changelog": v.changelog}
+        for v in versions
+    ]
 
 
 class TestCaseCreate(BaseModel):
@@ -256,7 +295,9 @@ async def create_test_case(
 
     expected_behavior = ExpectedBehavior(
         type=ExpectedBehaviorType(test_case.expected_behavior_type),
-        matcher=MatcherConfig(**test_case.expected_behavior_matcher) if test_case.expected_behavior_matcher else None,
+        matcher=MatcherConfig(**test_case.expected_behavior_matcher)
+        if test_case.expected_behavior_matcher
+        else None,
     )
 
     metadata = TestCaseMetadata(**test_case.metadata) if test_case.metadata else TestCaseMetadata()

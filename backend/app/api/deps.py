@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.core.exceptions import AuthorizationError
-from app.core.security import TokenData, get_current_user, require_role, require_scope
+from app.core.security import TokenData, get_current_user
 from app.repositories.agents import TargetAgentRepository
 from app.repositories.baselines import (
     AuditLogRepository,

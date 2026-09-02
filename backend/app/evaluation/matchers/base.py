@@ -12,8 +12,4 @@ class BaseMatcher(ABC):
         pass
 
     def _create_evidence(self, source: str, text: str, matched: bool = True) -> EvidenceItem:
-        return EvidenceItem(
-            source=source,
-            text=text,
-            metadata={"matched": matched}
-        )
+        return EvidenceItem(source=source, text=text, metadata={"matched": matched})

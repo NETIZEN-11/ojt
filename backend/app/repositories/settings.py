@@ -24,8 +24,7 @@ class PromptVersionRepository(BaseRepository[PromptVersion]):
     async def get_active_for_type(self, prompt_type: str) -> PromptVersion | None:
         result = await self.session.execute(
             select(PromptVersion).where(
-                PromptVersion.prompt_type == prompt_type,
-                PromptVersion.status == "ACTIVE"
+                PromptVersion.prompt_type == prompt_type, PromptVersion.status == "ACTIVE"
             )
         )
         return result.scalar_one_or_none()
@@ -36,7 +35,5 @@ class FeatureFlagRepository(BaseRepository[FeatureFlag]):
         super().__init__(FeatureFlag, session)
 
     async def get_by_key(self, key: str) -> FeatureFlag | None:
-        result = await self.session.execute(
-            select(FeatureFlag).where(FeatureFlag.key == key)
-        )
+        result = await self.session.execute(select(FeatureFlag).where(FeatureFlag.key == key))
         return result.scalar_one_or_none()

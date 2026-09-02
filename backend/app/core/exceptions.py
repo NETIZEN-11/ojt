@@ -24,7 +24,9 @@ class ValidationError(RedTeamException):
 
 
 class AuthenticationError(RedTeamException):
-    def __init__(self, message: str = "Authentication failed", details: dict[str, Any] | None = None):
+    def __init__(
+        self, message: str = "Authentication failed", details: dict[str, Any] | None = None
+    ):
         super().__init__(message, "AUTHENTICATION_ERROR", details, status.HTTP_401_UNAUTHORIZED)
 
 
@@ -143,7 +145,9 @@ class PipelineError(RedTeamException):
 
 class EvaluationFailureError(RedTeamException):
     def __init__(self, message: str, details: dict[str, Any] | None = None):
-        super().__init__(message, "EVALUATION_FAILURE", details, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        super().__init__(
+            message, "EVALUATION_FAILURE", details, status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class RegressionDetectedError(RedTeamException):

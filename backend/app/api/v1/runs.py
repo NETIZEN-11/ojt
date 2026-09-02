@@ -71,7 +71,9 @@ async def list_runs(
     suite_id: UUID | None = None,
     status: RunStatus | None = None,
     run_repo: RunRepository = Depends(get_run_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     filters = {}
     if target_agent_id:
@@ -93,7 +95,9 @@ async def create_run(
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
     suite_repo: TestSuiteRepository = Depends(get_suite_repo),
     baseline_repo: BaselineRepository = Depends(get_baseline_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])
+    ),
 ):
     agent = await agent_repo.get(run.target_agent_id)
     if not agent:
@@ -126,7 +130,9 @@ async def create_run(
 
     background_tasks.add_task(run_evaluation.delay, str(new_run.id))
 
-    logger.info("run_created", run_id=str(new_run.id), suite_id=str(suite.id), agent_id=str(agent.id))
+    logger.info(
+        "run_created", run_id=str(new_run.id), suite_id=str(suite.id), agent_id=str(agent.id)
+    )
     return RunResponse.model_validate(new_run)
 
 
@@ -134,7 +140,9 @@ async def create_run(
 async def get_run(
     run_id: UUID,
     run_repo: RunRepository = Depends(get_run_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     run = await run_repo.get(run_id)
     if not run:
@@ -166,17 +174,29 @@ async def cancel_run(
 async def list_executions(
     run_id: UUID,
     execution_repo: ExecutionRepository = Depends(get_execution_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     executions = await execution_repo.list_by_run(run_id)
-    return [{"id": str(e.id), "test_case_id": str(e.test_case_id), "status": e.status.value, "latency_ms": e.latency_ms} for e in executions]
+    return [
+        {
+            "id": str(e.id),
+            "test_case_id": str(e.test_case_id),
+            "status": e.status.value,
+            "latency_ms": e.latency_ms,
+        }
+        for e in executions
+    ]
 
 
 @router.get("/{run_id}/results")
 async def list_results(
     run_id: UUID,
     result_repo: ResultRepository = Depends(get_result_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     results = await result_repo.list_by_run(run_id)
     return [

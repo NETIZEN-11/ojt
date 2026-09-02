@@ -112,7 +112,11 @@ GATE_ACTIONS = {
 }
 
 
-def evaluate_gate(regressions: list[RegressionFinding], inconclusive_count: int, infrastructure_failure: bool = False) -> GateResult:
+def evaluate_gate(
+    regressions: list[RegressionFinding],
+    inconclusive_count: int,
+    infrastructure_failure: bool = False,
+) -> GateResult:
     if infrastructure_failure:
         return GateResult(
             decision=GateDecision.FAIL,

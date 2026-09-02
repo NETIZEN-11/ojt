@@ -39,7 +39,9 @@ class ExecutionRepository(BaseRepository[Execution]):
 
     async def get_by_run_and_test_case(self, run_id: UUID, test_case_id: UUID) -> Execution | None:
         result = await self.session.execute(
-            select(Execution).where(Execution.run_id == run_id, Execution.test_case_id == test_case_id)
+            select(Execution).where(
+                Execution.run_id == run_id, Execution.test_case_id == test_case_id
+            )
         )
         return result.scalar_one_or_none()
 

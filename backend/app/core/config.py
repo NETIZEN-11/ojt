@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "redteam-artifacts"
     S3_REGION: str = "us-east-1"
 
+    LOCAL_STORAGE_PATH: str = "/tmp/redteam-storage"  # nosec: development default, overridden in production
+
     JWT_ALGORITHM: str = "RS256"
     JWT_PRIVATE_KEY_PATH: str = ""
     JWT_PUBLIC_KEY_PATH: str = ""

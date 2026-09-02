@@ -9,28 +9,47 @@ from app.core.config import get_settings
 settings = get_settings()
 
 
-def add_severity_level(logger: structlog.BoundLogger, method_name: str, event_dict: EventDict) -> EventDict:
+def add_severity_level(
+    logger: structlog.BoundLogger, method_name: str, event_dict: EventDict
+) -> EventDict:
     event_dict["level"] = method_name.upper()
     return event_dict
 
 
-def add_timestamp(logger: structlog.BoundLogger, method_name: str, event_dict: EventDict) -> EventDict:
+def add_timestamp(
+    logger: structlog.BoundLogger, method_name: str, event_dict: EventDict
+) -> EventDict:
     from datetime import datetime
+
     event_dict["timestamp"] = datetime.now(UTC).isoformat()
     return event_dict
 
 
-def add_service_info(logger: structlog.BoundLogger, method_name: str, event_dict: EventDict) -> EventDict:
+def add_service_info(
+    logger: structlog.BoundLogger, method_name: str, event_dict: EventDict
+) -> EventDict:
     event_dict["service"] = settings.OTEL_SERVICE_NAME
     event_dict["environment"] = settings.ENVIRONMENT
     return event_dict
 
 
-def filter_sensitive_data(logger: structlog.BoundLogger, method_name: str, event_dict: EventDict) -> EventDict:
+def filter_sensitive_data(
+    logger: structlog.BoundLogger, method_name: str, event_dict: EventDict
+) -> EventDict:
     sensitive_keys = {
-        "password", "secret", "token", "api_key", "apikey",
-        "authorization", "cookie", "session", "private_key",
-        "jwt", "bearer", "access_token", "refresh_token",
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "cookie",
+        "session",
+        "private_key",
+        "jwt",
+        "bearer",
+        "access_token",
+        "refresh_token",
     }
     filtered = {}
     for key, value in event_dict.items():
@@ -69,6 +88,7 @@ def setup_logging() -> None:
     )
 
     import logging
+
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,

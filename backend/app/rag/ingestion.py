@@ -21,21 +21,32 @@ class IngestionPipeline:
                 content += "\nExamples: " + "; ".join(entry["examples"][:3])
 
             texts.append(content)
-            metadatas.append({
-                "category": entry.get("category"),
-                "subcategory": entry.get("subcategory"),
-                "technique": entry.get("technique"),
-                "severity": entry.get("severity"),
-                "tags": entry.get("tags", []),
-            })
+            metadatas.append(
+                {
+                    "category": entry.get("category"),
+                    "subcategory": entry.get("subcategory"),
+                    "technique": entry.get("technique"),
+                    "severity": entry.get("severity"),
+                    "tags": entry.get("tags", []),
+                }
+            )
 
         if texts:
             embeddings = await self.vector_store.embedding_provider.embed_batch(texts)
             await self.vector_store.add_batch("attack_taxonomy", texts, embeddings, metadatas)
             logger.info("ingested_attack_taxonomy", count=len(texts))
 
-    async def ingest_judgment(self, test_input: str, response: str, verdict: str, rationale: str, metadata: dict[str, Any] = None):
-        content = f"Input: {test_input}\nResponse: {response}\nVerdict: {verdict}\nRationale: {rationale}"
+    async def ingest_judgment(
+        self,
+        test_input: str,
+        response: str,
+        verdict: str,
+        rationale: str,
+        metadata: dict[str, Any] = None,
+    ):
+        content = (
+            f"Input: {test_input}\nResponse: {response}\nVerdict: {verdict}\nRationale: {rationale}"
+        )
         meta = {"verdict": verdict}
         if metadata:
             meta.update(metadata)
@@ -43,7 +54,9 @@ class IngestionPipeline:
         embedding = await self.vector_store.embedding_provider.embed(content)
         await self.vector_store.add("historical_judgments", content, embedding, meta)
 
-    async def ingest_review_precedent(self, regression: dict[str, Any], review_label: str, reviewer_notes: str):
+    async def ingest_review_precedent(
+        self, regression: dict[str, Any], review_label: str, reviewer_notes: str
+    ):
         content = f"Regression: {regression.get('regression_type')}\nCategory: {regression.get('category')}\nLabel: {review_label}\nNotes: {reviewer_notes}"
         meta = {
             "regression_type": regression.get("regression_type"),

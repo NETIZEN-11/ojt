@@ -13,7 +13,9 @@ logger = get_logger(__name__)
 
 class StorageProvider(ABC):
     @abstractmethod
-    async def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
+    async def upload(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> str:
         pass
 
     @abstractmethod
@@ -52,7 +54,9 @@ class S3StorageProvider(StorageProvider):
         except Exception:
             self.client.create_bucket(Bucket=self.bucket)
 
-    async def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
+    async def upload(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> str:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
         return f"{settings.S3_ENDPOINT_URL}/{self.bucket}/{key}"
 
@@ -83,13 +87,20 @@ class S3StorageProvider(StorageProvider):
 
 
 class LocalStorageProvider(StorageProvider):
-    def __init__(self, base_path: str = "/tmp/redteam-storage"):
-        self.base_path = base_path
-        import os
-        os.makedirs(base_path, exist_ok=True)
+    def __init__(self, base_path: str | None = None):
+        from app.core.config import get_settings
 
-    async def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
+        settings = get_settings()
+        self.base_path = base_path or settings.LOCAL_STORAGE_PATH or "/tmp/redteam-storage"  # nosec: dev default
         import os
+
+        os.makedirs(self.base_path, exist_ok=True)
+
+    async def upload(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> str:
+        import os
+
         path = os.path.join(self.base_path, key)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as f:
@@ -98,12 +109,14 @@ class LocalStorageProvider(StorageProvider):
 
     async def download(self, key: str) -> bytes:
         import os
+
         path = os.path.join(self.base_path, key)
         with open(path, "rb") as f:
             return f.read()
 
     async def delete(self, key: str) -> bool:
         import os
+
         path = os.path.join(self.base_path, key)
         try:
             os.remove(path)
@@ -113,6 +126,7 @@ class LocalStorageProvider(StorageProvider):
 
     async def exists(self, key: str) -> bool:
         import os
+
         path = os.path.join(self.base_path, key)
         return os.path.exists(path)
 

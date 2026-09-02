@@ -37,7 +37,9 @@ class RedTeamSessionManager:
     def __init__(self):
         self.sessions: dict[UUID, RedTeamSession] = {}
 
-    def create_session(self, target_agent_id: UUID, strategy: dict[str, Any], max_turns: int = 8) -> RedTeamSession:
+    def create_session(
+        self, target_agent_id: UUID, strategy: dict[str, Any], max_turns: int = 8
+    ) -> RedTeamSession:
         session = RedTeamSession(
             target_agent_id=target_agent_id,
             strategy=strategy,
@@ -57,7 +59,9 @@ class RedTeamSessionManager:
         session.current_turn = turn.turn_number
         return True
 
-    def complete_session(self, session_id: UUID, verdict: Verdict, objective_achieved: bool = False) -> bool:
+    def complete_session(
+        self, session_id: UUID, verdict: Verdict, objective_achieved: bool = False
+    ) -> bool:
         session = self.sessions.get(session_id)
         if not session:
             return False

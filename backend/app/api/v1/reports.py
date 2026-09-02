@@ -47,7 +47,9 @@ async def get_run_report(
     result_repo: ResultRepository = Depends(get_result_repo),
     regression_repo: RegressionRepository = Depends(get_regression_repo),
     review_repo: ReviewQueueRepository = Depends(get_review_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     run = await run_repo.get(run_id)
     if not run:
@@ -95,7 +97,9 @@ async def get_run_report_markdown(
     run_repo: RunRepository = Depends(get_run_repo),
     result_repo: ResultRepository = Depends(get_result_repo),
     regression_repo: RegressionRepository = Depends(get_regression_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     report = await get_run_report(run_id, run_repo, result_repo, regression_repo, current_user)
 
@@ -103,7 +107,7 @@ async def get_run_report_markdown(
 
 **Timestamp:** {report.timestamp}
 **Suite Version:** {report.suite_version}
-**Baseline:** {report.baseline_version or 'N/A'}
+**Baseline:** {report.baseline_version or "N/A"}
 **Framework Version:** {report.framework_version}
 
 ## Summary
@@ -117,10 +121,10 @@ async def get_run_report_markdown(
 - **Total Latency:** {report.total_latency_ms}ms
 
 ## Severity Breakdown
-- **Critical:** {report.severity_breakdown['critical']}
-- **High:** {report.severity_breakdown['high']}
-- **Medium:** {report.severity_breakdown['medium']}
-- **Low:** {report.severity_breakdown['low']}
+- **Critical:** {report.severity_breakdown["critical"]}
+- **High:** {report.severity_breakdown["high"]}
+- **Medium:** {report.severity_breakdown["medium"]}
+- **Low:** {report.severity_breakdown["low"]}
 
 ## Model Versions
 ```json

@@ -32,7 +32,9 @@ class TestSuiteVersionRepository(BaseRepository[TestSuiteVersion]):
 
     async def get_latest(self, suite_id: UUID) -> TestSuiteVersion | None:
         result = await self.session.execute(
-            select(TestSuiteVersion).where(TestSuiteVersion.suite_id == suite_id).order_by(TestSuiteVersion.version.desc())
+            select(TestSuiteVersion)
+            .where(TestSuiteVersion.suite_id == suite_id)
+            .order_by(TestSuiteVersion.version.desc())
         )
         return result.scalar_one_or_none()
 
@@ -43,15 +45,23 @@ class TestCaseRepository(BaseRepository[TestCase]):
 
     async def get_by_suite_and_id(self, suite_id: UUID, test_case_id: str) -> TestCase | None:
         result = await self.session.execute(
-            select(TestCase).where(TestCase.suite_id == suite_id, TestCase.test_case_id == test_case_id)
+            select(TestCase).where(
+                TestCase.suite_id == suite_id, TestCase.test_case_id == test_case_id
+            )
         )
         return result.scalar_one_or_none()
 
-    async def list_by_suite(self, suite_id: UUID, skip: int = 0, limit: int = 100) -> list[TestCase]:
-        return await self.list(skip=skip, limit=limit, filters={"suite_id": suite_id, "is_active": True})
+    async def list_by_suite(
+        self, suite_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[TestCase]:
+        return await self.list(
+            skip=skip, limit=limit, filters={"suite_id": suite_id, "is_active": True}
+        )
 
     async def list_by_category(self, suite_id: UUID, category: TestCaseCategory) -> list[TestCase]:
-        return await self.list(filters={"suite_id": suite_id, "category": category, "is_active": True})
+        return await self.list(
+            filters={"suite_id": suite_id, "category": category, "is_active": True}
+        )
 
     async def count_by_suite(self, suite_id: UUID) -> int:
         return await self.count(filters={"suite_id": suite_id, "is_active": True})
@@ -63,6 +73,8 @@ class TestCaseVersionRepository(BaseRepository[TestCaseVersion]):
 
     async def get_latest(self, test_case_id: UUID) -> TestCaseVersion | None:
         result = await self.session.execute(
-            select(TestCaseVersion).where(TestCaseVersion.test_case_id == test_case_id).order_by(TestCaseVersion.version.desc())
+            select(TestCaseVersion)
+            .where(TestCaseVersion.test_case_id == test_case_id)
+            .order_by(TestCaseVersion.version.desc())
         )
         return result.scalar_one_or_none()

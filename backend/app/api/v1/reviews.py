@@ -75,7 +75,11 @@ async def list_reviews(
     status: ReviewStatus | None = None,
     assignee_id: UUID | None = None,
     review_repo: ReviewQueueRepository = Depends(get_review_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "reviewer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(
+            ["admin", "safety_engineer", "reviewer", "ml_engineer", "qa_engineer", "viewer"]
+        )
+    ),
 ):
     if status:
         reviews = await review_repo.list_by_status(status, skip, limit)
@@ -90,7 +94,11 @@ async def list_reviews(
 async def get_review(
     review_id: UUID,
     review_repo: ReviewQueueRepository = Depends(get_review_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "reviewer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(
+            ["admin", "safety_engineer", "reviewer", "ml_engineer", "qa_engineer", "viewer"]
+        )
+    ),
 ):
     review = await review_repo.get(review_id)
     if not review:
@@ -162,7 +170,9 @@ async def label_review(
 async def list_review_labels(
     review_id: UUID,
     label_repo: ReviewLabelRepository = Depends(get_review_label_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "reviewer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "reviewer", "viewer"])
+    ),
 ):
     labels = await label_repo.list_by_review(review_id)
     return [ReviewLabelResponse.model_validate(label) for label in labels]
@@ -200,7 +210,11 @@ async def update_review(
         review.reviewer_notes = update.notes
     if update.label is not None:
         review.label = update.label
-        if update.label in (ReviewLabel.CONFIRMED_REGRESSION, ReviewLabel.FALSE_POSITIVE, ReviewLabel.NON_BLOCKING):
+        if update.label in (
+            ReviewLabel.CONFIRMED_REGRESSION,
+            ReviewLabel.FALSE_POSITIVE,
+            ReviewLabel.NON_BLOCKING,
+        ):
             review.status = ReviewStatus.RESOLVED
             review.resolved_at = datetime.utcnow()
     review.updated_at = datetime.utcnow()

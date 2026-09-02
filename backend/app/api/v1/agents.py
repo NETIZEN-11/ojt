@@ -71,7 +71,9 @@ async def list_agents(
     skip: int = 0,
     limit: int = 100,
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     agents = await agent_repo.list(skip=skip, limit=limit)
     return [TargetAgentResponse.model_validate(agent) for agent in agents]
@@ -99,7 +101,9 @@ async def create_agent(
 async def get_agent(
     agent_id: UUID,
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     agent = await agent_repo.get(agent_id)
     if not agent:
@@ -134,13 +138,16 @@ class AgentTestRequest(BaseModel):
 async def test_agent(
     agent_id: UUID,
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])
+    ),
 ):
     agent = await agent_repo.get(agent_id)
     if not agent:
         raise NotFoundError("TargetAgent", str(agent_id))
 
     from app.providers.target_agent import TargetAgentProviderFactory
+
     provider = TargetAgentProviderFactory.create_provider(
         "http",
         endpoint_url=agent.endpoint_url,
@@ -153,6 +160,7 @@ async def test_agent(
 
     try:
         import time
+
         start = time.time()
         healthy = await provider.health_check()
         latency = int((time.time() - start) * 1000)
@@ -166,13 +174,16 @@ async def call_agent(
     agent_id: UUID,
     request: AgentTestRequest,
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer"])
+    ),
 ):
     agent = await agent_repo.get(agent_id)
     if not agent:
         raise NotFoundError("TargetAgent", str(agent_id))
 
     from app.providers.target_agent import TargetAgentProviderFactory
+
     provider = TargetAgentProviderFactory.create_provider(
         "http",
         endpoint_url=agent.endpoint_url,
@@ -185,6 +196,7 @@ async def call_agent(
 
     try:
         import time
+
         start = time.time()
         response = await provider.call(request.input)
         latency = int((time.time() - start) * 1000)

@@ -34,7 +34,9 @@ async def list_regressions_by_run(
     run_id: UUID,
     severity: SeverityLevel | None = None,
     regression_repo: RegressionRepository = Depends(get_regression_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     if severity:
         regressions = await regression_repo.list_by_severity(severity)
@@ -48,7 +50,9 @@ async def list_regressions_by_run(
 async def list_regressions_by_baseline(
     baseline_id: UUID,
     regression_repo: RegressionRepository = Depends(get_regression_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     regressions = await regression_repo.list_by_baseline(baseline_id)
     return [RegressionResponse.model_validate(reg) for reg in regressions]
@@ -58,7 +62,9 @@ async def list_regressions_by_baseline(
 async def get_regression(
     regression_id: UUID,
     regression_repo: RegressionRepository = Depends(get_regression_repo),
-    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
 ):
     regression = await regression_repo.get(regression_id)
     if not regression:

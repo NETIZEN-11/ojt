@@ -34,7 +34,9 @@ class Retriever:
         query = f"Test: {test_input}\nResponse: {response}"
         return await self.retrieve(query, "historical_judgments", top_k=3)
 
-    async def retrieve_for_generator(self, category: str, previous_failures: list[str] = None) -> list[dict[str, Any]]:
+    async def retrieve_for_generator(
+        self, category: str, previous_failures: list[str] = None
+    ) -> list[dict[str, Any]]:
         query = f"Category: {category}"
         if previous_failures:
             query += "\nPrevious failures: " + "; ".join(previous_failures[:3])

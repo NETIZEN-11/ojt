@@ -22,7 +22,9 @@ class UserRepository(BaseRepository[User]):
 
     async def get_with_roles(self, id: UUID) -> User | None:
         result = await self.session.execute(
-            select(User).options(selectinload(User.roles).selectinload(Role.permissions)).where(User.id == id)
+            select(User)
+            .options(selectinload(User.roles).selectinload(Role.permissions))
+            .where(User.id == id)
         )
         return result.scalar_one_or_none()
 

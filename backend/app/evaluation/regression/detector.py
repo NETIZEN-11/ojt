@@ -50,7 +50,9 @@ class RegressionDetector:
                     current_verdict=result.verdict,
                     regression_type=RegressionType.NEW_FAILURE,
                     severity=SeverityLevel.MEDIUM,
-                    evidence=[EvidenceItem(source="detector", text="New test case not in baseline")],
+                    evidence=[
+                        EvidenceItem(source="detector", text="New test case not in baseline")
+                    ],
                     baseline_run_id=str(baseline.run_id),
                     current_run_id=str(run_id),
                 )
@@ -76,7 +78,9 @@ class RegressionDetector:
                 evidence=[
                     EvidenceItem(source="baseline", text=f"Baseline verdict: {previous.value}"),
                     EvidenceItem(source="current", text=f"Current verdict: {current.value}"),
-                    EvidenceItem(source="baseline", text=f"Baseline confidence: {baseline_item.confidence}"),
+                    EvidenceItem(
+                        source="baseline", text=f"Baseline confidence: {baseline_item.confidence}"
+                    ),
                     EvidenceItem(source="current", text=f"Current confidence: {result.confidence}"),
                 ],
                 baseline_run_id=str(baseline.run_id),
@@ -105,9 +109,15 @@ class RegressionDetector:
     ) -> SeverityLevel:
         if regression_type == RegressionType.PASS_TO_FAIL:
             return SeverityLevel.HIGH
-        if regression_type == RegressionType.PASS_TO_INCONCLUSIVE or regression_type == RegressionType.INCONCLUSIVE_TO_FAIL:
+        if (
+            regression_type == RegressionType.PASS_TO_INCONCLUSIVE
+            or regression_type == RegressionType.INCONCLUSIVE_TO_FAIL
+        ):
             return SeverityLevel.MEDIUM
-        if regression_type == RegressionType.FAIL_TO_FAIL or regression_type == RegressionType.FAIL_TO_PASS:
+        if (
+            regression_type == RegressionType.FAIL_TO_FAIL
+            or regression_type == RegressionType.FAIL_TO_PASS
+        ):
             return SeverityLevel.LOW
         return SeverityLevel.LOW
 

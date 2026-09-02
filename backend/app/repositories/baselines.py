@@ -23,7 +23,9 @@ class BaselineRepository(BaseRepository[Baseline]):
 
     async def get_by_suite_version(self, suite_id: UUID, suite_version: int) -> Baseline | None:
         result = await self.session.execute(
-            select(Baseline).where(Baseline.suite_id == suite_id, Baseline.suite_version == suite_version)
+            select(Baseline).where(
+                Baseline.suite_id == suite_id, Baseline.suite_version == suite_version
+            )
         )
         return result.scalar_one_or_none()
 
@@ -38,9 +40,13 @@ class BaselineItemRepository(BaseRepository[BaselineItem]):
     async def list_by_baseline(self, baseline_id: UUID) -> list[BaselineItem]:
         return await self.list(filters={"baseline_id": baseline_id})
 
-    async def get_by_baseline_and_test_case(self, baseline_id: UUID, test_case_id: UUID) -> BaselineItem | None:
+    async def get_by_baseline_and_test_case(
+        self, baseline_id: UUID, test_case_id: UUID
+    ) -> BaselineItem | None:
         result = await self.session.execute(
-            select(BaselineItem).where(BaselineItem.baseline_id == baseline_id, BaselineItem.test_case_id == test_case_id)
+            select(BaselineItem).where(
+                BaselineItem.baseline_id == baseline_id, BaselineItem.test_case_id == test_case_id
+            )
         )
         return result.scalar_one_or_none()
 
@@ -60,7 +66,9 @@ class RegressionRepository(BaseRepository[Regression]):
 
     async def get_by_run_and_test_case(self, run_id: UUID, test_case_id: UUID) -> Regression | None:
         result = await self.session.execute(
-            select(Regression).where(Regression.run_id == run_id, Regression.test_case_id == test_case_id)
+            select(Regression).where(
+                Regression.run_id == run_id, Regression.test_case_id == test_case_id
+            )
         )
         return result.scalar_one_or_none()
 
@@ -83,10 +91,14 @@ class ReviewQueueRepository(BaseRepository[ReviewQueue]):
     async def list_pending(self, skip: int = 0, limit: int = 100) -> list[ReviewQueue]:
         return await self.list(skip=skip, limit=limit, filters={"status": ReviewStatus.PENDING})
 
-    async def list_by_status(self, status: ReviewStatus, skip: int = 0, limit: int = 100) -> list[ReviewQueue]:
+    async def list_by_status(
+        self, status: ReviewStatus, skip: int = 0, limit: int = 100
+    ) -> list[ReviewQueue]:
         return await self.list(skip=skip, limit=limit, filters={"status": status})
 
-    async def list_by_assignee(self, assignee_id: UUID, skip: int = 0, limit: int = 100) -> list[ReviewQueue]:
+    async def list_by_assignee(
+        self, assignee_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[ReviewQueue]:
         return await self.list(skip=skip, limit=limit, filters={"assigned_to": assignee_id})
 
     async def get_by_regression(self, regression_id: UUID) -> ReviewQueue | None:
@@ -105,7 +117,9 @@ class ReviewLabelRepository(BaseRepository[ReviewLabelRecord]):
 
     async def get_latest_by_review(self, review_id: UUID) -> ReviewLabelRecord | None:
         result = await self.session.execute(
-            select(ReviewLabelRecord).where(ReviewLabelRecord.review_id == review_id).order_by(ReviewLabelRecord.created_at.desc())
+            select(ReviewLabelRecord)
+            .where(ReviewLabelRecord.review_id == review_id)
+            .order_by(ReviewLabelRecord.created_at.desc())
         )
         return result.scalar_one_or_none()
 

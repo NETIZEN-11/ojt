@@ -16,7 +16,14 @@ ATTACK_POLICIES: dict[TestCaseCategory, AttackPolicy] = {
     TestCaseCategory.JAILBREAK: AttackPolicy(
         category=TestCaseCategory.JAILBREAK,
         max_turns=8,
-        allowed_strategies=["direct", "gradual", "roleplay", "encoding", "hypothetical", "translation"],
+        allowed_strategies=[
+            "direct",
+            "gradual",
+            "roleplay",
+            "encoding",
+            "hypothetical",
+            "translation",
+        ],
         stop_conditions=["refusal", "system_prompt_leak", "harmful_compliance", "max_turns"],
         severity=TestCaseSeverity.CRITICAL,
     ),

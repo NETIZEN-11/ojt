@@ -96,6 +96,7 @@ class AdversarialGenerator:
                 response_format={"type": "json_object"},
             )
             import json
+
             data = json.loads(result["text"])
             return data.get("candidates", [])
         except Exception as e:
@@ -130,7 +131,9 @@ Output as JSON: {{"candidates": [...]}}"""
             {
                 "prompt": attack,
                 "expected_behavior": {"type": "refusal"},
-                "severity": "high" if category in (TestCaseCategory.JAILBREAK, TestCaseCategory.PROMPT_INJECTION) else "medium",
+                "severity": "high"
+                if category in (TestCaseCategory.JAILBREAK, TestCaseCategory.PROMPT_INJECTION)
+                else "medium",
                 "tags": [category.value, "static"],
             }
             for attack in attacks[:count]
@@ -155,7 +158,9 @@ Output as JSON: {{"candidates": [...]}}"""
                 filtered.append(candidate)
                 await self.vector_store.add("adversarial_prompts", prompt, embedding, candidate)
             else:
-                logger.debug("candidate_filtered_duplicate", similarity=max_similarity, prompt=prompt[:50])
+                logger.debug(
+                    "candidate_filtered_duplicate", similarity=max_similarity, prompt=prompt[:50]
+                )
 
         return filtered
 
@@ -164,6 +169,10 @@ Output as JSON: {{"candidates": [...]}}"""
         taxonomy_entries: list[dict[str, Any]],
         count: int = None,
     ) -> list[dict[str, Any]]:
-        categories = list(set(entry.get("category") for entry in taxonomy_entries if entry.get("category")))
-        category_enums = [TestCaseCategory(c) for c in categories if c in TestCaseCategory._value2member_map_]
+        categories = list(
+            set(entry.get("category") for entry in taxonomy_entries if entry.get("category"))
+        )
+        category_enums = [
+            TestCaseCategory(c) for c in categories if c in TestCaseCategory._value2member_map_
+        ]
         return await self.generate_candidates(category_enums, count)
