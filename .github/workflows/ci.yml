@@ -73,21 +73,25 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: redteam
-        ports: 5432:5432
+        ports:
+          - 5432:5432
         options: --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=5
       redis:
         image: redis:7-alpine
-        ports: 6379:6379
+        ports:
+          - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=5
       chromadb:
         image: chromadb/chroma:0.4.22
-        ports: 8000:8000
+        ports:
+          - 8001:8000
       minio:
         image: minio/minio:latest
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
-        ports: 9000:9000
+        ports:
+          - 9000:9000
         options: --health-cmd="curl -f http://localhost:9000/minio/health/live" --health-interval=30s --health-timeout=20s --health-retries=3
     steps:
       - uses: actions/checkout@v4
@@ -244,21 +248,25 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: redteam
-        ports: 5432:5432
+        ports:
+          - 5432:5432
         options: --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=5
       redis:
         image: redis:7-alpine
-        ports: 6379:6379
+        ports:
+          - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=5
       chromadb:
         image: chromadb/chroma:0.4.22
-        ports: 8000:8000
+        ports:
+          - 8001:8000
       minio:
         image: minio/minio:latest
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
-        ports: 9000:9000
+        ports:
+          - 9000:9000
         options: --health-cmd="curl -f http://localhost:9000/minio/health/live" --health-interval=30s --health-timeout=20s --health-retries=3
     steps:
       - uses: actions/checkout@v4
