@@ -52,24 +52,33 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def _read_key_file(path: str) -> str:
+    """Read a key file, raising FileNotFoundError if it doesn't exist."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Key file not found: {path}")
+    with open(path) as f:
+        return f.read()
+
+
 def load_private_key() -> tuple[str, str]:
-    if settings.JWT_PRIVATE_KEY_PATH and os.path.exists(settings.JWT_PRIVATE_KEY_PATH):
-        with open(settings.JWT_PRIVATE_KEY_PATH) as f:
-            return f.read(), settings.JWT_ALGORITHM
-    return settings.SECRET_KEY, "HS256"
+    settings = get_settings()
+    if not settings.JWT_PRIVATE_KEY_PATH:
+        raise ValueError("JWT_PRIVATE_KEY_PATH is required")
+    return _read_key_file(settings.JWT_PRIVATE_KEY_PATH), settings.JWT_ALGORITHM
 
 
 def load_public_key() -> tuple[str, str]:
-    if settings.JWT_PUBLIC_KEY_PATH and os.path.exists(settings.JWT_PUBLIC_KEY_PATH):
-        with open(settings.JWT_PUBLIC_KEY_PATH) as f:
-            return f.read(), settings.JWT_ALGORITHM
-    return settings.SECRET_KEY, "HS256"
+    settings = get_settings()
+    if not settings.JWT_PUBLIC_KEY_PATH:
+        raise ValueError("JWT_PUBLIC_KEY_PATH is required")
+    return _read_key_file(settings.JWT_PUBLIC_KEY_PATH), settings.JWT_ALGORITHM
 
 
 def create_access_token(
     data: dict[str, Any],
     expires_delta: timedelta | None = None,
 ) -> str:
+    settings = get_settings()
     to_encode = data.copy()
     expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -80,6 +89,7 @@ def create_access_token(
 
 
 def create_refresh_token(data: dict[str, Any]) -> str:
+    settings = get_settings()
     to_encode = data.copy()
     expire = datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
@@ -93,7 +103,7 @@ def decode_token(token: str) -> TokenData:
         payload = jwt.decode(
             token,
             public_key,
-            algorithms=[algorithm, "HS256", "RS256"],
+            algorithms=[algorithm],
             options={"verify_aud": False},
         )
         if payload.get("type") != "access":
@@ -105,6 +115,11 @@ def decode_token(token: str) -> TokenData:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server authentication configuration error",
+        ) from e
 
 
 def decode_refresh_token(token: str) -> TokenData:
@@ -113,7 +128,7 @@ def decode_refresh_token(token: str) -> TokenData:
         payload = jwt.decode(
             token,
             public_key,
-            algorithms=[algorithm, "HS256", "RS256"],
+            algorithms=[algorithm],
             options={"verify_aud": False},
         )
         if payload.get("type") != "refresh":
@@ -125,24 +140,17 @@ def decode_refresh_token(token: str) -> TokenData:
             detail="Could not validate refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server authentication configuration error",
+        ) from e
 
 
 async def get_current_user(
     security_scopes: SecurityScopes,
     token: str | None = Depends(oauth2_scheme),
 ) -> TokenData:
-    # Development bypass: if in development and no token provided, create a mock admin token
-    if settings.is_development and not token:
-        from uuid import uuid4
-        return TokenData(
-            sub=str(uuid4()),
-            username="dev_user",
-            email="dev@local",
-            roles=["admin"],
-            scopes=get_scopes_for_roles(["admin"]),
-            exp=int((datetime.now(UTC) + timedelta(hours=1)).timestamp())
-        )
-    
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

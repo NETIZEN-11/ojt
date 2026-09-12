@@ -19,6 +19,12 @@ import {
   ChevronRight,
   Menu,
   X,
+  ShieldCheck,
+  Code2,
+  Network,
+  Activity,
+  Bug,
+  Zap,
 } from "lucide-react";
 
 const navigation = [
@@ -26,6 +32,12 @@ const navigation = [
   { name: "Test Suites", href: "/suites", icon: FlaskConical },
   { name: "Target Agents", href: "/agents", icon: Bot },
   { name: "Evaluations", href: "/runs", icon: ClipboardList },
+  { name: "Red Teaming", href: "/redteam", icon: Bug },
+  { name: "Guardrails", href: "/guardrails", icon: ShieldCheck },
+  { name: "Model Security", href: "/security", icon: Shield },
+  { name: "Code Scanning", href: "/code-scan", icon: Code2 },
+  { name: "MCP Proxy", href: "/mcp", icon: Network },
+  { name: "Monitoring", href: "/monitoring", icon: Activity },
   { name: "Baselines", href: "/baselines", icon: Database },
   { name: "Reviews", href: "/reviews", icon: Shield },
   { name: "Reports", href: "/reports", icon: FileText },

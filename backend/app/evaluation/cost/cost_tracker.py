@@ -25,6 +25,7 @@ class CostTracker:
                 "gpt-4": {"input": 0.03, "output": 0.06},
                 "gpt-4-turbo": {"input": 0.01, "output": 0.03},
                 "gpt-4o": {"input": 0.005, "output": 0.015},
+                "gpt-4o-2024-08-06": {"input": 0.005, "output": 0.015},
                 "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
                 "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
                 "text-embedding-3-small": {"input": 0.00002, "output": 0},
@@ -35,6 +36,8 @@ class CostTracker:
                 "claude-3-sonnet": {"input": 0.003, "output": 0.015},
                 "claude-3-haiku": {"input": 0.00025, "output": 0.00125},
                 "claude-3.5-sonnet": {"input": 0.003, "output": 0.015},
+                "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
+                "claude-3-5-sonnet": {"input": 0.003, "output": 0.015},
             },
             "google": {
                 "gemini-1.5-pro": {"input": 0.0035, "output": 0.0105},
@@ -56,12 +59,28 @@ class CostTracker:
         provider = provider.lower()
         model_key = model.lower()
 
-        if provider in self.pricing and model_key in self.pricing[provider]:
-            pricing = self.pricing[provider][model_key]
-            input_cost = (input_tokens / 1000) * pricing.get("input", 0)
-            output_cost = (output_tokens / 1000) * pricing.get("output", 0)
-            return input_cost + output_cost
+        if provider in self.pricing:
+            # Exact match
+            if model_key in self.pricing[provider]:
+                pricing = self.pricing[provider][model_key]
+                input_cost = (input_tokens / 1000) * pricing.get("input", 0)
+                output_cost = (output_tokens / 1000) * pricing.get("output", 0)
+                return input_cost + output_cost
+            # Fallback: strip version suffix and try base model
+            base_model = model_key.split("-202")[0].split("-20")[0]
+            if base_model in self.pricing[provider]:
+                pricing = self.pricing[provider][base_model]
+                input_cost = (input_tokens / 1000) * pricing.get("input", 0)
+                output_cost = (output_tokens / 1000) * pricing.get("output", 0)
+                return input_cost + output_cost
+            # Partial prefix match for claude/gpt variants
+            for key, pricing in self.pricing[provider].items():
+                if model_key.startswith(key) or key.startswith(model_key):
+                    input_cost = (input_tokens / 1000) * pricing.get("input", 0)
+                    output_cost = (output_tokens / 1000) * pricing.get("output", 0)
+                    return input_cost + output_cost
 
+        logger.warning("cost_unknown_model", provider=provider, model=model)
         return 0.0
 
     async def track_cost(

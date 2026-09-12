@@ -99,11 +99,13 @@ export default function LoginPage() {
             </form>
           </CardContent>
           <CardFooter className="flex flex-col items-center gap-4 text-sm text-muted-foreground">
-            <div className="p-3 rounded-lg bg-muted w-full text-center">
-              <p className="font-medium">Demo Credentials</p>
-              <p className="font-mono text-xs">admin / admin123</p>
-            </div>
-            <p>Other roles: safety_engineer, ml_engineer, qa_engineer, reviewer, viewer</p>
+            {process.env.NEXT_PUBLIC_ENV !== "production" && (
+              <div className="p-3 rounded-lg bg-muted w-full text-center">
+                <p className="font-medium">Demo Credentials (dev only)</p>
+                <p className="font-mono text-xs">admin / ••••••••</p>
+              </div>
+            )}
+            <p>Contact admin for access</p>
           </CardFooter>
         </Card>
       </div>

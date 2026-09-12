@@ -67,13 +67,23 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 
+def _get_client_ip(request: Request) -> str:
+    # Check X-Forwarded-For behind proxy, fallback to client.host
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 async def rate_limit_dependency(
     request: Request,
     limit: int = None,
     window: int = None,
 ) -> None:
-    client_ip = request.client.host if request.client else "unknown"
-    key = f"ratelimit:{client_ip}:{request.url.path}"
+    client_ip = _get_client_ip(request)
+    # Use user ID if authenticated for per-user limiting, else IP + path
+    user_key = getattr(request.state, "user_id", None) or client_ip
+    key = f"ratelimit:{user_key}:{request.url.path}"
     allowed, current, retry_after = rate_limiter.check_rate_limit(key, limit, window)
 
     remaining = max(0, (limit or settings.RATE_LIMIT_REQUESTS) - current)
@@ -110,7 +120,7 @@ def rate_limit(limit: int = None, window: int = None):
                 args[0] if args and isinstance(args[0], Request) else None
             )
             if request:
-                client_ip = request.client.host if request.client else "unknown"
+                client_ip = _get_client_ip(request)
                 key = f"ratelimit:{client_ip}:{request.url.path}"
                 allowed, current, retry_after = rate_limiter.check_rate_limit(key, limit, window)
                 if not allowed:

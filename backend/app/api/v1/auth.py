@@ -43,7 +43,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     username: str
     password: str
-    full_name: str = None
+    full_name: str | None = None
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -132,6 +132,28 @@ async def register(
     db: AsyncSession = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repo),
 ):
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    # In production, disable open registration unless explicitly allowed
+    if settings.is_production and not settings.FEATURE_EXPERIMENTAL_UI:
+        # Check if any admin exists - if yes, require authentication
+        # For production, only allow registration if no users exist (bootstrap)
+        all_users = await user_repo.list(skip=0, limit=1)
+        if len(all_users) > 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Open registration disabled in production. Contact administrator.",
+            )
+
+    # Password strength validation
+    if len(request.password) < 12:
+        raise HTTPException(status_code=400, detail="Password must be at least 12 characters")
+    if request.password.lower() == request.password or request.password.upper() == request.password:
+        raise HTTPException(status_code=400, detail="Password must contain mixed case")
+    if not any(c.isdigit() for c in request.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one digit")
+
     if await user_repo.get_by_email(request.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 

@@ -9,6 +9,8 @@ def test_settings_load():
         REDIS_URL="redis://localhost:6379/0",
         CELERY_BROKER_URL="redis://localhost:6379/1",
         CELERY_RESULT_BACKEND="redis://localhost:6379/2",
+        S3_ACCESS_KEY="test_key",
+        S3_SECRET_KEY="test_secret",
     )
     assert settings.APP_NAME == "Agent Red-Teaming Framework"
     assert settings.SECRET_KEY == "a" * 32
@@ -24,6 +26,8 @@ def test_settings_cors_parsing():
         REDIS_URL="redis://localhost:6379/0",
         CELERY_BROKER_URL="redis://localhost:6379/1",
         CELERY_RESULT_BACKEND="redis://localhost:6379/2",
+        S3_ACCESS_KEY="test_key",
+        S3_SECRET_KEY="test_secret",
         CORS_ORIGINS="http://localhost:3000, http://localhost:8000",
     )
     assert len(settings.cors_origins_list) == 2
@@ -39,6 +43,8 @@ def test_settings_allowed_hosts_parsing():
         REDIS_URL="redis://localhost:6379/0",
         CELERY_BROKER_URL="redis://localhost:6379/1",
         CELERY_RESULT_BACKEND="redis://localhost:6379/2",
+        S3_ACCESS_KEY="test_key",
+        S3_SECRET_KEY="test_secret",
         TARGET_AGENT_ALLOWED_HOSTS="api.example.com, internal.example.com",
     )
     assert len(settings.allowed_hosts_list) == 2
@@ -54,6 +60,8 @@ def test_settings_is_production():
         REDIS_URL="redis://localhost:6379/0",
         CELERY_BROKER_URL="redis://localhost:6379/1",
         CELERY_RESULT_BACKEND="redis://localhost:6379/2",
+        S3_ACCESS_KEY="test_key",
+        S3_SECRET_KEY="test_secret",
         ENVIRONMENT="production",
     )
     assert settings.is_production is True

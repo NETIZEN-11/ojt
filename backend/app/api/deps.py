@@ -124,6 +124,9 @@ async def get_current_active_user(
 
 
 def require_role(*allowed_roles: str):
+    """Require one of the allowed roles. Accepts a list or multiple string args."""
+    if len(allowed_roles) == 1 and isinstance(allowed_roles[0], list):
+        allowed_roles = tuple(allowed_roles[0])
     async def role_checker(current_user: TokenData = Depends(get_current_active_user)) -> TokenData:
         if not any(role in current_user.roles for role in allowed_roles):
             raise AuthorizationError("Insufficient permissions")

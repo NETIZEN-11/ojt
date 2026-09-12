@@ -7,8 +7,25 @@ logger = get_logger(__name__)
 
 
 class IngestionPipeline:
-    def __init__(self, vector_store: VectorStore):
+    def __init__(self, vector_store: VectorStore, chunk_size: int = 500, chunk_overlap: int = 50):
         self.vector_store = vector_store
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+    def _chunk_text(self, text: str) -> list[str]:
+        """Simple recursive chunking with overlap."""
+        if len(text) <= self.chunk_size:
+            return [text]
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + self.chunk_size
+            chunk = text[start:end]
+            chunks.append(chunk)
+            if end >= len(text):
+                break
+            start = end - self.chunk_overlap
+        return chunks
 
     async def ingest_attack_taxonomy(self, entries: list[dict[str, Any]]):
         texts = []
@@ -32,9 +49,17 @@ class IngestionPipeline:
             )
 
         if texts:
-            embeddings = await self.vector_store.embedding_provider.embed_batch(texts)
-            await self.vector_store.add_batch("attack_taxonomy", texts, embeddings, metadatas)
-            logger.info("ingested_attack_taxonomy", count=len(texts))
+            # Chunk long texts to avoid embedding truncation (8191 token limit)
+            chunked_texts = []
+            chunked_metas = []
+            for text, meta in zip(texts, metadatas):
+                chunks = self._chunk_text(text)
+                for idx, chunk in enumerate(chunks):
+                    chunked_texts.append(chunk)
+                    chunked_metas.append({**meta, "chunk_index": idx, "total_chunks": len(chunks)})
+            embeddings = await self.vector_store.embedding_provider.embed_batch(chunked_texts)
+            await self.vector_store.add_batch("attack_taxonomy", chunked_texts, embeddings, chunked_metas)
+            logger.info("ingested_attack_taxonomy", count=len(texts), chunks=len(chunked_texts))
 
     async def ingest_judgment(
         self,
@@ -51,8 +76,12 @@ class IngestionPipeline:
         if metadata:
             meta.update(metadata)
 
-        embedding = await self.vector_store.embedding_provider.embed(content)
-        await self.vector_store.add("historical_judgments", content, embedding, meta)
+        # Chunk if needed
+        chunks = self._chunk_text(content)
+        for idx, chunk in enumerate(chunks):
+            chunk_meta = {**meta, "chunk_index": idx, "total_chunks": len(chunks)}
+            embedding = await self.vector_store.embedding_provider.embed(chunk)
+            await self.vector_store.add("historical_judgments", chunk, embedding, chunk_meta)
 
     async def ingest_review_precedent(
         self, regression: dict[str, Any], review_label: str, reviewer_notes: str

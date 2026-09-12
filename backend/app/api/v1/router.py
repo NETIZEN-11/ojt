@@ -6,17 +6,21 @@ from app.api.v1 import (
     baselines,
     datasets,
     health,
+    guardrails,
     matrices,
+    mcp,
     regressions,
     reports,
     results,
     reviews,
     runs,
+    security,
     settings,
     suites,
     test_cases,
     users,
 )
+from app.api.v1.code_scanning import router as code_scanning_router
 
 api_router = APIRouter()
 
@@ -34,4 +38,8 @@ api_router.include_router(baselines.router, prefix="/baselines", tags=["baseline
 api_router.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+api_router.include_router(guardrails.router, prefix="/guardrails", tags=["guardrails"])
+api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
+api_router.include_router(code_scanning_router, prefix="/code-scan", tags=["code-scanning"])
+api_router.include_router(security.router, prefix="/security", tags=["security"])
 api_router.include_router(health.router, tags=["health"])

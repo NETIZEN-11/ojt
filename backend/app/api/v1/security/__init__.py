@@ -1,0 +1,1 @@
+from app.security.model_scanner.router import router

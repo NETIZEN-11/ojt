@@ -40,6 +40,27 @@ class TargetAgentUpdate(BaseModel):
     health_check_url: HttpUrl | None = None
 
 
+def _sanitize_agent_response(agent, current_user: TokenData) -> dict:
+    """Redact auth_config for viewer roles."""
+    data = {
+        "id": agent.id,
+        "name": agent.name,
+        "description": agent.description,
+        "endpoint_url": agent.endpoint_url,
+        "auth_config": agent.auth_config if "admin" in current_user.roles or "safety_engineer" in current_user.roles else {},
+        "request_template": agent.request_template,
+        "response_extraction": agent.response_extraction,
+        "timeout_seconds": agent.timeout_seconds,
+        "max_retries": agent.max_retries,
+        "allowed": agent.allowed,
+        "status": agent.status,
+        "health_check_url": agent.health_check_url,
+        "created_at": agent.created_at,
+        "updated_at": agent.updated_at,
+    }
+    return data
+
+
 class TargetAgentResponse(BaseModel):
     id: UUID
     name: str
@@ -76,7 +97,7 @@ async def list_agents(
     ),
 ):
     agents = await agent_repo.list(skip=skip, limit=limit)
-    return [TargetAgentResponse.model_validate(agent) for agent in agents]
+    return [TargetAgentResponse.model_validate(_sanitize_agent_response(a, current_user)) for a in agents]
 
 
 @router.post("/", response_model=TargetAgentResponse, status_code=201)
@@ -108,7 +129,7 @@ async def get_agent(
     agent = await agent_repo.get(agent_id)
     if not agent:
         raise NotFoundError("TargetAgent", str(agent_id))
-    return TargetAgentResponse.model_validate(agent)
+    return TargetAgentResponse.model_validate(_sanitize_agent_response(agent, current_user))
 
 
 @router.patch("/{agent_id}", response_model=TargetAgentResponse)

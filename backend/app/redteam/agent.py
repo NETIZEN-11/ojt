@@ -31,7 +31,7 @@ class AttackStrategy(BaseModel):
     objective: str
     category: str
     initial_prompt: str
-    max_turns: int = Field(default=8)
+    max_turns: int = Field(default=8, ge=1, le=20)
     stop_conditions: list[str] = []
     tool_definitions: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -485,6 +485,8 @@ class RedTeamAgent:
             target_agent_headers=self.target_agent_headers,
         )
         if strategy:
+            # Clamp max_turns to prevent bypass via crafted strategy
+            strategy.max_turns = min(max(1, strategy.max_turns), settings.REDTEAM_MAX_TURNS)
             initial_state.strategy = strategy
 
         graph = self.build_graph()

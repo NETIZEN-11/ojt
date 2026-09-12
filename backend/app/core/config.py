@@ -75,12 +75,12 @@ class Settings(BaseSettings):
     CHROMA_COLLECTION_PREFIX: str = "redteam"
 
     S3_ENDPOINT_URL: str = "http://localhost:9000"
-    S3_ACCESS_KEY: str = "minioadmin"
-    S3_SECRET_KEY: str = "minioadmin"
+    S3_ACCESS_KEY: str = Field(..., min_length=1)
+    S3_SECRET_KEY: str = Field(..., min_length=1)
     S3_BUCKET: str = "redteam-artifacts"
     S3_REGION: str = "us-east-1"
 
-    LOCAL_STORAGE_PATH: str = "/tmp/redteam-storage"  # nosec: development default, overridden in production
+    LOCAL_STORAGE_PATH: str = "/tmp/redteam-storage"
 
     JWT_ALGORITHM: str = "RS256"
     JWT_PRIVATE_KEY_PATH: str = ""

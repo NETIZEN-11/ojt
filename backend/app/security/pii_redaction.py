@@ -9,22 +9,22 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# PII detection patterns
+# PII detection patterns - production hardened
 PII_PATTERNS = {
-    "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+    "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
     "phone_us": re.compile(r"\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b"),
     "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
     "credit_card": re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
-    "ipv4": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
+    "ipv4": re.compile(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"),
     "ipv6": re.compile(r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b"),
-    "api_key": re.compile(r"\b(?:api[_-]?key|apikey|secret[_-]?key|access[_-]?token)\s*[:=]\s*[A-Za-z0-9_-]{20,}\b", re.IGNORECASE),
+    "api_key": re.compile(r"\b(?:api[_-]?key|apikey|secret[_-]?key|access[_-]?token)\s*[:=]\s*[A-Za-z0-9_\-]{20,}\b", re.IGNORECASE),
     "aws_key": re.compile(r"\b(AKIA|ASIA)[A-Z0-9]{16}\b"),
-    "github_token": re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36}\b"),
+    "github_token": re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{36,}\b"),
     "slack_token": re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
     "jwt": re.compile(r"\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),
     "private_key": re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
     "password": re.compile(r"\b(?:password|passwd|pwd)\s*[:=]\s*\S+\b", re.IGNORECASE),
-    "connection_string": re.compile(r"\b(?:postgres|mysql|mongodb|redis)://[^:\s]+:[^@\s]+@[^/\s]+/\w+\b"),
+    "connection_string": re.compile(r"\b(?:postgres|mysql|mongodb|redis)://[^:\s]+:[^@\s]+@[^/\s]+/\S+\b"),
 }
 
 
@@ -70,10 +70,10 @@ class PIIRedactor:
         return matches
 
     def redact(self, text: str, replacement: str = None) -> RedactionResult:
-        """Redact PII from text."""
+        """Redact PII from text with overlap handling and typed replacement."""
         if replacement is None:
             replacement = self.replacement
-            
+
         matches = self.detect(text)
         if not matches:
             return RedactionResult(
@@ -83,23 +83,41 @@ class PIIRedactor:
                 redaction_count=0,
             )
 
-        # Build redacted text
+        # Deduplicate and handle overlaps - keep highest confidence and earliest
+        deduped: list[PIIMatch] = []
+        seen = set()
+        for m in matches:
+            key = (m.start, m.end, m.pii_type)
+            if key not in seen:
+                seen.add(key)
+                deduped.append(m)
+        # Sort and merge overlapping - keep first, skip overlapping
+        deduped.sort(key=lambda m: (m.start, -m.end))
+        filtered: list[PIIMatch] = []
+        last_end = -1
+        for m in deduped:
+            if m.start >= last_end:
+                filtered.append(m)
+                last_end = m.end
+            # overlapping matches skipped to avoid corruption
+
+        # Build redacted text with typed replacement
         redacted_parts = []
         last_end = 0
-        
-        for match in matches:
+        for match in filtered:
             redacted_parts.append(text[last_end:match.start])
-            redacted_parts.append(replacement)
-            last_end = match.end()
-        
+            typed_replacement = f"[REDACTED:{match.pii_type.upper()}]" if replacement == self.replacement else replacement
+            redacted_parts.append(typed_replacement)
+            last_end = match.end
+
         redacted_parts.append(text[last_end:])
         redacted_text = "".join(redacted_parts)
 
         return RedactionResult(
             original_text=text,
             redacted_text=redacted_text,
-            matches=matches,
-            redaction_count=len(matches),
+            matches=filtered,
+            redaction_count=len(filtered),
         )
 
     def redact_dict(self, data: dict[str, Any], fields_to_redact: list[str] | None = None) -> dict[str, Any]:

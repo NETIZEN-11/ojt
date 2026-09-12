@@ -1,8 +1,14 @@
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from app.security.model_scanner.detectors import BaseDetector
 from app.security.model_scanner.report import ScanFinding, SeverityLevel
+
+
+class BaseDetector(ABC):
+    @abstractmethod
+    async def scan(self, path: Path) -> list[ScanFinding]:
+        pass
 
 
 class PickleDetector(BaseDetector):
