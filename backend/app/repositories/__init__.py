@@ -9,6 +9,8 @@ from app.repositories.baselines import (
     ReviewQueueRepository,
     SeverityFindingRepository,
 )
+from app.repositories.dataset import DatasetRepository, DatasetSplitRepository, DatasetVersionRepository
+from app.repositories.matrix import EvaluationMatrixCellRepository, EvaluationMatrixRepository
 from app.repositories.runs import ExecutionRepository, ResultRepository, RunRepository
 from app.repositories.settings import (
     FeatureFlagRepository,
@@ -28,6 +30,11 @@ __all__ = [
     "BaseRepository",
     "BaselineItemRepository",
     "BaselineRepository",
+    "DatasetRepository",
+    "DatasetSplitRepository",
+    "DatasetVersionRepository",
+    "EvaluationMatrixCellRepository",
+    "EvaluationMatrixRepository",
     "ExecutionRepository",
     "FeatureFlagRepository",
     "ModelConfigRepository",

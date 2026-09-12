@@ -15,9 +15,21 @@ from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.repositories.baselines import RegressionRepository, ReviewQueueRepository
 from app.repositories.runs import ResultRepository, RunRepository
+from datetime import datetime
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+class ReportResponse(BaseModel):
+    id: UUID
+    run_id: UUID
+    type: str = "full"
+    status: str = "completed"
+    format: str = "markdown"
+    generated_at: str
+    generated_by: UUID
+    content: dict | None = None
 
 
 class RunReport(BaseModel):
@@ -38,6 +50,42 @@ class RunReport(BaseModel):
     total_cost_usd: float
     total_latency_ms: int
     review_items: int
+
+
+@router.get("/", response_model=list[ReportResponse])
+async def list_reports(
+    skip: int = 0,
+    limit: int = 100,
+    run_repo: RunRepository = Depends(get_run_repo),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
+):
+    """
+    List all generated reports.
+    For now, this returns a list of runs that can be used to generate reports.
+    In a production system, you would store generated reports in a separate table.
+    """
+    from app.domain.enums import RunStatus
+    
+    # Get completed runs
+    runs = await run_repo.list(skip=skip, limit=limit, filters={})
+    completed_runs = [r for r in runs if r.status == RunStatus.COMPLETED]
+    
+    reports = []
+    for run in completed_runs[:limit]:
+        reports.append(ReportResponse(
+            id=run.id,
+            run_id=run.id,
+            type="full",
+            status="completed",
+            format="markdown",
+            generated_at=run.completed_at.isoformat() if run.completed_at else run.created_at.isoformat(),
+            generated_by=run.created_by,
+            content=None
+        ))
+    
+    return reports
 
 
 @router.get("/run/{run_id}", response_model=RunReport)

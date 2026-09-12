@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/ui/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
-import { Plus, Eye, Check, X, Clock, Trash2 } from "lucide-react";
+import { Plus, Eye, Check, X, Clock, Trash2, RefreshCw } from "lucide-react";
 
 interface Baseline {
   id: string;
@@ -110,152 +111,160 @@ export default function BaselinesPage() {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <DashboardLayout>
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Baselines</h1>
-          <p className="text-muted-foreground">Manage approved baselines for regression detection</p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Baselines</h1>
+            <p className="text-muted-foreground">Manage approved baselines for regression detection</p>
+          </div>
+          <Button variant="outline" onClick={fetchBaselines}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
         </div>
-      </div>
 
-      {loading ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading baselines...</p>
-          </CardContent>
-        </Card>
-      ) : baselines.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-muted-foreground">No baselines found. Create one from a completed run.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>All Baselines ({baselines.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Suite</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Run</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Approved By</TableHead>
-                    <TableHead>Approved At</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-40">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {baselines.map((baseline) => (
-                    <TableRow key={baseline.id}>
-                      <TableCell className="font-medium">{baseline.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{baseline.suite_id.slice(0, 8)}...</TableCell>
-                      <TableCell>v{baseline.suite_version}</TableCell>
-                      <TableCell className="font-mono text-sm">{baseline.run_id.slice(0, 8)}...</TableCell>
-                      <TableCell>
-                        <Badge variant={baseline.is_active ? "default" : "secondary"}>
-                          {baseline.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {baseline.approved_by?.slice(0, 8) || "N/A"}
-                      </TableCell>
-                      <TableCell>{baseline.approved_at ? formatDate(baseline.approved_at) : "N/A"}</TableCell>
-                      <TableCell>{formatDate(baseline.created_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => fetchBaselineItems(baseline.id)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {!baseline.is_active && baseline.approved_at ? (
-                            <Button variant="ghost" size="icon" onClick={() => handleApprove(baseline.id)}>
-                              <Check className="h-4 w-4 text-green-600" />
-                            </Button>
-                          ) : baseline.is_active ? (
-                            <Button variant="ghost" size="icon" onClick={() => handleDeactivate(baseline.id)}>
-                              <X className="h-4 w-4 text-red-600" />
-                            </Button>
-                          ) : (
-                            <Badge variant="secondary">Pending</Badge>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(baseline.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {selectedBaseline && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Baseline Items: {selectedBaseline.name}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => { setSelectedBaseline(null); setBaselineItems([]); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {itemsLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading items...</p>
-              </div>
-            ) : baselineItems.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No items in this baseline</p>
-            ) : (
+        {loading ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Loading baselines...</p>
+            </CardContent>
+          </Card>
+        ) : baselines.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <p className="text-muted-foreground">No baselines found. Create one from a completed run.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>All Baselines ({baselines.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Test Case</TableHead>
-                      <TableHead>Verdict</TableHead>
-                      <TableHead>Confidence</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Suite</TableHead>
+                      <TableHead>Version</TableHead>
+                      <TableHead>Run</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Approved By</TableHead>
+                      <TableHead>Approved At</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead className="w-40">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {baselineItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-mono text-sm">{item.test_case_id.slice(0, 12)}...</TableCell>
+                    {baselines.map((baseline) => (
+                      <TableRow key={baseline.id}>
+                        <TableCell className="font-medium">{baseline.name}</TableCell>
+                        <TableCell className="font-mono text-sm">{baseline.suite_id.slice(0, 8)}...</TableCell>
+                        <TableCell>v{baseline.suite_version}</TableCell>
+                        <TableCell className="font-mono text-sm">{baseline.run_id.slice(0, 8)}...</TableCell>
                         <TableCell>
-                          <Badge variant={
-                            item.verdict === "PASS" ? "default" :
-                            item.verdict === "FAIL" ? "destructive" : "secondary"
-                          }>
-                            {item.verdict}
+                          <Badge variant={baseline.is_active ? "default" : "secondary"}>
+                            {baseline.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{(item.confidence * 100).toFixed(1)}%</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(item.created_at)}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {baseline.approved_by?.slice(0, 8) || "N/A"}
+                        </TableCell>
+                        <TableCell>{baseline.approved_at ? formatDate(baseline.approved_at) : "N/A"}</TableCell>
+                        <TableCell>{formatDate(baseline.created_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => fetchBaselineItems(baseline.id)} title="View items">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {!baseline.is_active && baseline.approved_at ? (
+                              <Button variant="ghost" size="icon" onClick={() => handleApprove(baseline.id)} title="Activate">
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                            ) : baseline.is_active ? (
+                              <Button variant="ghost" size="icon" onClick={() => handleDeactivate(baseline.id)} title="Deactivate">
+                                <X className="h-4 w-4 text-red-600" />
+                              </Button>
+                            ) : (
+                              <Badge variant="secondary">Pending</Badge>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(baseline.id)} title="Delete">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedBaseline && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Baseline Items: {selectedBaseline.name}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => { setSelectedBaseline(null); setBaselineItems([]); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {itemsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-muted-foreground">Loading items...</p>
+                </div>
+              ) : baselineItems.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No items in this baseline</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Test Case</TableHead>
+                        <TableHead>Verdict</TableHead>
+                        <TableHead>Confidence</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {baselineItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono text-sm">{item.test_case_id.slice(0, 12)}...</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              item.verdict === "PASS" ? "default" :
+                              item.verdict === "FAIL" ? "destructive" : "secondary"
+                            }>
+                              {item.verdict}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{(item.confidence * 100).toFixed(1)}%</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{formatDate(item.created_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

@@ -13,6 +13,12 @@ class TestCaseCategory(str, Enum):
     HALLUCINATION = "hallucination"
     BIAS = "bias"
     ADVERSARIAL = "adversarial"
+    RAG_POISONING = "rag_poisoning"
+    RAG_RETRIEVAL_MANIPULATION = "rag_retrieval_manipulation"
+    RAG_CONTEXT_MANIPULATION = "rag_context_manipulation"
+    RAG_DATA_EXPOSURE = "rag_data_exposure"
+    AGENT_TOOL_ABUSE = "agent_tool_abuse"
+    PRIVILEGE_ESCALATION = "privilege_escalation"
     CUSTOM = "custom"
 
 
@@ -155,4 +161,10 @@ class PromptVersionStatus(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active"
     DEPRECATED = "deprecated"
+    ARCHIVED = "archived"
+
+
+class DatasetStatus(str, Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
     ARCHIVED = "archived"

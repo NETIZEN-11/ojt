@@ -185,7 +185,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_test_case_versions_test_case_id", "test_case_versions", ["test_case_id"])
 
-    # Create runs table
+    # Create runs table (without baseline FK initially)
     op.create_table(
         "runs",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -215,7 +215,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.ForeignKeyConstraint(["baseline_id"], ["baselines.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["suite_id"], ["test_suites.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["target_agent_id"], ["target_agents.id"], ondelete="CASCADE"),
@@ -314,6 +313,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_baseline_items_baseline_id", "baseline_items", ["baseline_id"])
+
+    # Add baseline FK constraint to runs table now that baselines exists
+    op.create_foreign_key(
+        "fk_runs_baseline_id",
+        "runs",
+        "baselines",
+        ["baseline_id"],
+        ["id"],
+        ondelete="SET NULL"
+    )
 
     # Create regressions table
     op.create_table(

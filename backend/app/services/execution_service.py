@@ -1,7 +1,7 @@
 import copy
 from datetime import datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -15,15 +15,27 @@ from app.core.exceptions import (
 )
 from app.core.logging import get_logger
 from app.domain.enums import ExecutionStatus, RunStatus
+from app.evaluation.cost.cost_tracker import CostTracker, CostCategory
 from app.models.run import Execution, Run
 from app.models.target_agent import TargetAgent
 from app.models.test_suite import TestCase
 from app.repositories.agents import TargetAgentRepository
 from app.repositories.runs import ExecutionRepository, ResultRepository, RunRepository
 from app.repositories.suites import TestCaseRepository
+from app.security.pii_redaction import redact_execution_data, redact_for_storage
 
 settings = get_settings()
 logger = get_logger(__name__)
+
+
+def generate_trace_id() -> str:
+    """Generate a new trace ID."""
+    return uuid4().hex
+
+
+def generate_span_id() -> str:
+    """Generate a new span ID."""
+    return uuid4().hex[:16]
 
 
 class ExecutionService:
@@ -40,6 +52,7 @@ class ExecutionService:
         self.result_repo = result_repo
         self.agent_repo = agent_repo
         self.case_repo = case_repo
+        self.cost_tracker = CostTracker()
 
     async def execute_run(self, run_id: UUID) -> Run:
         run = await self.run_repo.get(run_id)
@@ -60,12 +73,17 @@ class ExecutionService:
         run.total_tests = len(test_cases)
         await self.run_repo.session.flush()
 
+        # Generate trace ID for this run
+        run_trace_id = generate_trace_id()
+        
         for test_case in test_cases:
             execution = Execution(
                 run_id=run.id,
                 test_case_id=test_case.id,
                 status=ExecutionStatus.RUNNING,
                 started_at=datetime.utcnow(),
+                trace_id=run_trace_id,
+                span_id=generate_span_id(),
             )
             execution = await self.execution_repo.create(execution)
 
@@ -76,6 +94,21 @@ class ExecutionService:
                 execution.completed_at = datetime.utcnow()
                 elapsed = execution.completed_at - execution.started_at
                 execution.latency_ms = int(elapsed.total_seconds() * 1000)
+
+                # Track cost for target agent call (estimate based on response size)
+                response_text = str(response.get("text", response.get("response", str(response))))
+                estimated_tokens = len(response_text) // 4  # rough estimate
+                if estimated_tokens > 0:
+                    await self.cost_tracker.track_cost(
+                        category=CostCategory.LLM_INFERENCE,
+                        provider=agent.auth_config.get("provider", "target_agent"),
+                        model=agent.auth_config.get("model", "unknown"),
+                        input_tokens=len(test_case.input) // 4,
+                        output_tokens=estimated_tokens,
+                        run_id=run.id,
+                        test_case_id=test_case.id,
+                        metadata={"execution_id": str(execution.id), "agent_name": agent.name},
+                    )
             except Exception as e:
                 execution.status = ExecutionStatus.FAILED
                 execution.completed_at = datetime.utcnow()
@@ -86,6 +119,17 @@ class ExecutionService:
                     test_case_id=str(test_case.id),
                     error=str(e),
                 )
+
+            # Redact PII before storage
+            execution_data = {
+                "target_request": execution.target_request,
+                "target_response": execution.target_response,
+                "tool_calls": execution.tool_calls,
+            }
+            redacted_data = redact_execution_data(execution_data)
+            execution.target_request = redacted_data["target_request"]
+            execution.target_response = redacted_data["target_response"]
+            execution.tool_calls = redacted_data["tool_calls"]
 
             await self.execution_repo.session.flush()
 
@@ -102,14 +146,23 @@ class ExecutionService:
         self, agent: TargetAgent, test_case: TestCase, run: Run
     ) -> dict[str, Any]:
         timeout = httpx.Timeout(agent.timeout_seconds, connect=5.0)
+        
+        # Get execution for this test case to get trace/span IDs
+        execution = await self.execution_repo.get_by_run_and_test_case(run.id, test_case.id)
+        
         headers = {
             "Content-Type": "application/json",
             **agent.auth_config.get("headers", {}),
         }
+        
+        # Add trace headers for distributed tracing
+        if execution and execution.trace_id:
+            headers["X-Trace-ID"] = execution.trace_id
+        if execution and execution.span_id:
+            headers["X-Span-ID"] = execution.span_id
 
         request_body = self._build_request(agent, test_case)
 
-        execution = await self.execution_repo.get_by_run_and_test_case(run.id, test_case.id)
         if execution:
             execution.target_request = request_body
             await self.execution_repo.session.flush()

@@ -55,5 +55,65 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .prose {
+    @apply text-muted-foreground;
+  }
+  .prose h1 {
+    @apply text-3xl font-bold text-foreground mb-4;
+  }
+  .prose h2 {
+    @apply text-2xl font-semibold text-foreground mb-3 mt-6;
+  }
+  .prose h3 {
+    @apply text-xl font-medium text-foreground mb-2 mt-4;
+  }
+  .prose p {
+    @apply mb-4 leading-relaxed;
+  }
+  .prose code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  .prose pre {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+  }
+  .prose pre code {
+    @apply bg-transparent p-0 text-sm;
+  }
+  .prose ul {
+    @apply list-disc list-inside mb-4 space-y-1;
+  }
+  .prose ol {
+    @apply list-decimal list-inside mb-4 space-y-1;
+  }
+  .prose blockquote {
+    @apply border-l-4 border-primary pl-4 italic text-muted-foreground my-4;
+  }
+  .prose a {
+    @apply text-primary hover:underline;
+  }
+  .prose table {
+    @apply w-full border-collapse mb-4;
+  }
+  .prose th,
+  .prose td {
+    @apply border border-border p-2 text-left text-sm;
+  }
+  .prose th {
+    @apply bg-muted font-semibold;
   }
 }

@@ -87,6 +87,98 @@ async def list_runs(
     return [RunResponse.model_validate(run) for run in runs]
 
 
+class StatsResponse(BaseModel):
+    total_runs: int
+    pass_rate: float
+    total_regressions: int
+    critical_findings: int
+    review_queue_count: int
+    avg_runtime: float
+    total_cost: float
+    high_count: int
+    medium_count: int
+    low_count: int
+    pass_rate_trend: list[float] = []
+    regression_trend: list[int] = []
+    cost_trend: list[float] = []
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats(
+    run_repo: RunRepository = Depends(get_run_repo),
+    current_user: TokenData = Depends(
+        require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
+    ),
+):
+    # Get all runs
+    runs = await run_repo.list(skip=0, limit=1000, filters={})
+    
+    if not runs:
+        return StatsResponse(
+            total_runs=0,
+            pass_rate=0.0,
+            total_regressions=0,
+            critical_findings=0,
+            review_queue_count=0,
+            avg_runtime=0.0,
+            total_cost=0.0,
+            high_count=0,
+            medium_count=0,
+            low_count=0,
+            pass_rate_trend=[],
+            regression_trend=[],
+            cost_trend=[]
+        )
+    
+    # Calculate aggregated stats
+    total_runs = len(runs)
+    total_tests = sum(r.total_tests for r in runs if r.total_tests)
+    total_passed = sum(r.passed_count for r in runs if r.passed_count)
+    pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0.0
+    
+    total_regressions = sum(r.regression_count for r in runs if r.regression_count)
+    critical_findings = sum(r.critical_count for r in runs if r.critical_count)
+    high_count = sum(r.high_count for r in runs if r.high_count)
+    medium_count = sum(r.medium_count for r in runs if r.medium_count)
+    low_count = sum(r.low_count for r in runs if r.low_count)
+    
+    total_latency = sum(r.total_latency_ms for r in runs if r.total_latency_ms)
+    avg_runtime = total_latency / total_runs if total_runs > 0 else 0.0
+    
+    total_cost = sum(r.total_cost_usd for r in runs if r.total_cost_usd)
+    
+    # Calculate trends (last 7 completed runs)
+    completed_runs = [r for r in runs if r.status == RunStatus.COMPLETED][-7:]
+    
+    pass_rate_trend = []
+    regression_trend = []
+    cost_trend = []
+    
+    for run in completed_runs:
+        if run.total_tests > 0:
+            pass_rate_trend.append((run.passed_count / run.total_tests) * 100)
+        else:
+            pass_rate_trend.append(0.0)
+        regression_trend.append(run.regression_count if run.regression_count else 0)
+        cost_trend.append(run.total_cost_usd if run.total_cost_usd else 0.0)
+    
+    return StatsResponse(
+        total_runs=total_runs,
+        pass_rate=pass_rate,
+        total_regressions=total_regressions,
+        critical_findings=critical_findings,
+        review_queue_count=0,  # Would need review repo to get actual count
+        avg_runtime=avg_runtime,
+        total_cost=total_cost,
+        high_count=high_count,
+        medium_count=medium_count,
+        low_count=low_count,
+        pass_rate_trend=pass_rate_trend,
+        regression_trend=regression_trend,
+        cost_trend=cost_trend
+    )
+
+
 @router.post("/", response_model=RunResponse, status_code=201)
 async def create_run(
     run: RunCreate,

@@ -121,3 +121,11 @@ async def get_current_active_user(
     if not current_user:
         raise AuthorizationError("Inactive user")
     return current_user
+
+
+def require_role(*allowed_roles: str):
+    async def role_checker(current_user: TokenData = Depends(get_current_active_user)) -> TokenData:
+        if not any(role in current_user.roles for role in allowed_roles):
+            raise AuthorizationError("Insufficient permissions")
+        return current_user
+    return role_checker

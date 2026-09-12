@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from app.core.circuit_breaker import CircuitBreakerConfig, circuit_breaker_registry
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -33,12 +34,21 @@ class OpenAIProvider(LLMProvider):
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=60.0,
         )
+        self._circuit_breaker = None
 
-    @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
-    )
+    async def _get_circuit_breaker(self):
+        if self._circuit_breaker is None:
+            self._circuit_breaker = await circuit_breaker_registry.get_or_create(
+                f"openai_{self.model}",
+                CircuitBreakerConfig(
+                    failure_threshold=5,
+                    success_threshold=2,
+                    timeout=30.0,
+                    excluded_exceptions=(ValueError, KeyError),  # Don't count validation errors
+                )
+            )
+        return self._circuit_breaker
+
     async def complete(
         self,
         prompt: str,
@@ -46,24 +56,29 @@ class OpenAIProvider(LLMProvider):
         max_tokens: int = 2048,
         response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if response_format:
-            payload["response_format"] = response_format
+        breaker = await self._get_circuit_breaker()
+        
+        async def _do_complete():
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            if response_format:
+                payload["response_format"] = response_format
 
-        response = await self.client.post("/chat/completions", json=payload)
-        response.raise_for_status()
-        data = response.json()
+            response = await self.client.post("/chat/completions", json=payload)
+            response.raise_for_status()
+            data = response.json()
 
-        return {
-            "text": data["choices"][0]["message"]["content"],
-            "tokens_used": data["usage"]["total_tokens"],
-            "estimated_cost": self._estimate_cost(data["usage"]),
-        }
+            return {
+                "text": data["choices"][0]["message"]["content"],
+                "tokens_used": data["usage"]["total_tokens"],
+                "estimated_cost": self._estimate_cost(data["usage"]),
+            }
+
+        return await breaker.call(_do_complete)
 
     def _estimate_cost(self, usage: dict[str, int]) -> float:
         input_cost = usage["prompt_tokens"] * 0.000005
@@ -84,12 +99,21 @@ class AnthropicProvider(LLMProvider):
             headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
             timeout=60.0,
         )
+        self._circuit_breaker = None
 
-    @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
-    )
+    async def _get_circuit_breaker(self):
+        if self._circuit_breaker is None:
+            self._circuit_breaker = await circuit_breaker_registry.get_or_create(
+                f"anthropic_{self.model}",
+                CircuitBreakerConfig(
+                    failure_threshold=5,
+                    success_threshold=2,
+                    timeout=30.0,
+                    excluded_exceptions=(ValueError, KeyError),
+                )
+            )
+        return self._circuit_breaker
+
     async def complete(
         self,
         prompt: str,
@@ -97,22 +121,27 @@ class AnthropicProvider(LLMProvider):
         max_tokens: int = 2048,
         response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "messages": [{"role": "user", "content": prompt}],
-        }
+        breaker = await self._get_circuit_breaker()
+        
+        async def _do_complete():
+            payload = {
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": [{"role": "user", "content": prompt}],
+            }
 
-        response = await self.client.post("/messages", json=payload)
-        response.raise_for_status()
-        data = response.json()
+            response = await self.client.post("/messages", json=payload)
+            response.raise_for_status()
+            data = response.json()
 
-        return {
-            "text": data["content"][0]["text"],
-            "tokens_used": data["usage"]["input_tokens"] + data["usage"]["output_tokens"],
-            "estimated_cost": self._estimate_cost(data["usage"]),
-        }
+            return {
+                "text": data["content"][0]["text"],
+                "tokens_used": data["usage"]["input_tokens"] + data["usage"]["output_tokens"],
+                "estimated_cost": self._estimate_cost(data["usage"]),
+            }
+
+        return await breaker.call(_do_complete)
 
     def _estimate_cost(self, usage: dict[str, int]) -> float:
         input_cost = usage["input_tokens"] * 0.000003

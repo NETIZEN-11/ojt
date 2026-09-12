@@ -16,6 +16,7 @@ from app.domain.value_objects import (
     MatcherConfig,
     ScoringResult,
 )
+from app.evaluation.cost.cost_tracker import CostTracker, CostCategory
 from app.evaluation.judges.fallback_judge import FallbackJudge
 from app.evaluation.judges.llm_judge import LLMJudge
 from app.evaluation.matchers.exact import ExactMatcher
@@ -41,6 +42,7 @@ class ScoringService:
         self.execution_repo = execution_repo
         self.result_repo = result_repo
         self.case_repo = case_repo
+        self.cost_tracker = CostTracker()
 
         self.matchers = {
             ExpectedBehaviorType.EXACT_MATCH: ExactMatcher(),
@@ -72,10 +74,25 @@ class ScoringService:
 
             scoring_result = await self._score_execution(execution, test_case)
 
+            # Track cost for this scoring operation
+            if scoring_result.tokens_used > 0:
+                await self.cost_tracker.track_cost(
+                    category=CostCategory.LLM_INFERENCE,
+                    provider=scoring_result.judge_output.metadata.get("provider", "unknown") if scoring_result.judge_output else "unknown",
+                    model=scoring_result.judge_output.metadata.get("model", "unknown") if scoring_result.judge_output else "unknown",
+                    input_tokens=scoring_result.judge_output.metadata.get("input_tokens", 0) if scoring_result.judge_output else 0,
+                    output_tokens=scoring_result.judge_output.metadata.get("output_tokens", 0) if scoring_result.judge_output else 0,
+                    run_id=run.id,
+                    test_case_id=test_case.id,
+                    metadata={"execution_id": str(execution.id), "matcher": scoring_result.matcher_used.value if scoring_result.matcher_used else "unknown"},
+                )
+
             result = Result(
                 execution_id=execution.id,
                 run_id=run.id,
                 test_case_id=test_case.id,
+                trace_id=execution.trace_id,
+                span_id=execution.span_id,
                 verdict=scoring_result.verdict,
                 confidence=scoring_result.confidence,
                 matcher_used=scoring_result.matcher_used,

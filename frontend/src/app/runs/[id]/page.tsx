@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/ui/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,9 @@ import { api } from "@/lib/api";
 import { formatDate, formatDuration, formatCost, getSeverityColor } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useParams } from "next/navigation";
+import { AlertTriangle, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 interface RunDetail {
   id: string;
@@ -97,153 +101,183 @@ export default function RunDetailPage() {
   }, [isAuthenticated, isLoading, runId, fetchData]);
 
   if (isLoading || !isAuthenticated) {
-    return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+    return (
+      <DashboardLayout>
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (!run) {
-    return <div className="p-6 text-center">Run not found</div>;
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-center">Run not found</div>
+      </DashboardLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Run Details</h1>
-          <p className="text-muted-foreground">{run.id}</p>
-        </div>
-        <div className="flex gap-2">
-          <Badge variant={run.status === "completed" ? "default" : run.status === "failed" ? "destructive" : "secondary"}>
-            {run.status.replace("_", " ").toUpperCase()}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardContent><div className="text-2xl font-bold">{run.total_tests}</div><p className="text-sm text-muted-foreground">Total Tests</p></CardContent></Card>
-        <Card><CardContent><div className="text-2xl font-bold text-green-600">{run.passed_count}</div><p className="text-sm text-muted-foreground">Passed</p></CardContent></Card>
-        <Card><CardContent><div className="text-2xl font-bold text-red-600">{run.failed_count}</div><p className="text-sm text-muted-foreground">Failed</p></CardContent></Card>
-        <Card><CardContent><div className="text-2xl font-bold text-yellow-600">{run.inconclusive_count}</div><p className="text-sm text-muted-foreground">Inconclusive</p></CardContent></Card>
-      </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="results">Results ({results.length})</TabsTrigger>
-          <TabsTrigger value="regressions">Regressions ({regressions.length})</TabsTrigger>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle>Run Information</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span>Framework Version</span><span className="font-medium">{run.framework_version}</span>
-                  <span>Suite Version</span><span className="font-medium">{run.suite_version}</span>
-                  <span>Total Cost</span><span className="font-medium">{formatCost(run.total_cost_usd)}</span>
-                  <span>Total Latency</span><span className="font-medium">{formatDuration(run.total_latency_ms)}</span>
-                  <span>Started</span><span className="font-medium">{run.started_at ? formatDate(run.started_at) : "N/A"}</span>
-                  <span>Completed</span><span className="font-medium">{run.completed_at ? formatDate(run.completed_at) : "N/A"}</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Severity Breakdown</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {run.critical_count > 0 && <div className="flex justify-between"><span>Critical</span><Badge className="bg-red-100 text-red-800">{run.critical_count}</Badge></div>}
-                {run.high_count > 0 && <div className="flex justify-between"><span>High</span><Badge className="bg-orange-100 text-orange-800">{run.high_count}</Badge></div>}
-                {run.medium_count > 0 && <div className="flex justify-between"><span>Medium</span><Badge className="bg-yellow-100 text-yellow-800">{run.medium_count}</Badge></div>}
-                {run.low_count > 0 && <div className="flex justify-between"><span>Low</span><Badge className="bg-blue-100 text-blue-800">{run.low_count}</Badge></div>}
-                <div className="flex justify-between border-t pt-2"><span>Total Regressions</span><span className="font-bold">{run.regression_count}</span></div>
-              </CardContent>
-            </Card>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/runs"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Run Details</h1>
+              <p className="text-muted-foreground">{run.id}</p>
+            </div>
           </div>
-        </TabsContent>
+          <div className="flex gap-2">
+            <Badge variant={
+              run.status === "completed" ? "default" :
+              run.status === "failed" ? "destructive" :
+              run.status === "running" ? "secondary" :
+              "outline"
+            }>
+              {run.status === "completed" && <CheckCircle className="mr-1 h-3 w-3" />}
+              {run.status === "failed" && <XCircle className="mr-1 h-3 w-3" />}
+              {run.status === "running" && <AlertTriangle className="mr-1 h-3 w-3" />}
+              {run.status.replace("_", " ").toUpperCase()}
+            </Badge>
+          </div>
+        </div>
 
-        <TabsContent value="results">
-          <Card>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Test Case</TableHead>
-                      <TableHead>Verdict</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead>Matcher</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Cost</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {results.map((result) => (
-                      <TableRow key={result.id}>
-                        <TableCell className="font-mono text-sm">{result.test_case_id.slice(0, 12)}...</TableCell>
-                        <TableCell><Badge variant={result.verdict === "PASS" ? "default" : result.verdict === "FAIL" ? "destructive" : "secondary"}>{result.verdict}</Badge></TableCell>
-                        <TableCell>{(result.confidence * 100).toFixed(1)}%</TableCell>
-                        <TableCell className="text-sm">{result.matcher_used || "N/A"}</TableCell>
-                        <TableCell>{formatDuration(result.execution_time_ms)}</TableCell>
-                        <TableCell>{formatCost(result.estimated_cost)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card><CardContent><div className="text-2xl font-bold">{run.total_tests}</div><p className="text-sm text-muted-foreground">Total Tests</p></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-green-600">{run.passed_count}</div><p className="text-sm text-muted-foreground">Passed</p></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-red-600">{run.failed_count}</div><p className="text-sm text-muted-foreground">Failed</p></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-yellow-600">{run.inconclusive_count}</div><p className="text-sm text-muted-foreground">Inconclusive</p></CardContent></Card>
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="results">Results ({results.length})</TabsTrigger>
+            <TabsTrigger value="regressions">Regressions ({regressions.length})</TabsTrigger>
+            <TabsTrigger value="config">Configuration</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader><CardTitle>Run Information</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span>Framework Version</span><span className="font-medium">{run.framework_version}</span>
+                    <span>Suite Version</span><span className="font-medium">{run.suite_version}</span>
+                    <span>Total Cost</span><span className="font-medium">{formatCost(run.total_cost_usd)}</span>
+                    <span>Total Latency</span><span className="font-medium">{formatDuration(run.total_latency_ms)}</span>
+                    <span>Started</span><span className="font-medium">{run.started_at ? formatDate(run.started_at) : "N/A"}</span>
+                    <span>Completed</span><span className="font-medium">{run.completed_at ? formatDate(run.completed_at) : "N/A"}</span>
+                  </div>
+                  {run.error_message && (
+                    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                      Error: {run.error_message}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Severity Breakdown</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  {run.critical_count > 0 && <div className="flex justify-between"><span>Critical</span><Badge className="bg-red-100 text-red-800">{run.critical_count}</Badge></div>}
+                  {run.high_count > 0 && <div className="flex justify-between"><span>High</span><Badge className="bg-orange-100 text-orange-800">{run.high_count}</Badge></div>}
+                  {run.medium_count > 0 && <div className="flex justify-between"><span>Medium</span><Badge className="bg-yellow-100 text-yellow-800">{run.medium_count}</Badge></div>}
+                  {run.low_count > 0 && <div className="flex justify-between"><span>Low</span><Badge className="bg-blue-100 text-blue-800">{run.low_count}</Badge></div>}
+                  <div className="flex justify-between border-t pt-2"><span>Total Regressions</span><span className="font-bold">{run.regression_count}</span></div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-        <TabsContent value="regressions">
-          <Card>
-            <CardContent>
-              {regressions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No regressions detected</div>
-              ) : (
+          <TabsContent value="results">
+            <Card>
+              <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Test Case</TableHead>
-                        <TableHead>Previous</TableHead>
-                        <TableHead>Current</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Severity</TableHead>
+                        <TableHead>Verdict</TableHead>
+                        <TableHead>Confidence</TableHead>
+                        <TableHead>Matcher</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Cost</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {regressions.map((reg) => (
-                        <TableRow key={reg.id}>
-                          <TableCell className="font-mono text-sm">{reg.test_case_id.slice(0, 12)}...</TableCell>
-                          <TableCell><Badge variant={reg.previous_verdict === "PASS" ? "default" : reg.previous_verdict === "FAIL" ? "destructive" : "secondary"}>{reg.previous_verdict}</Badge></TableCell>
-                          <TableCell><Badge variant={reg.current_verdict === "PASS" ? "default" : reg.current_verdict === "FAIL" ? "destructive" : "secondary"}>{reg.current_verdict}</Badge></TableCell>
-                          <TableCell className="text-sm">{reg.regression_type.replace("_", " ")}</TableCell>
-                          <TableCell><Badge className={getSeverityColor(reg.severity)}>{reg.severity}</Badge></TableCell>
+                      {results.map((result) => (
+                        <TableRow key={result.id}>
+                          <TableCell className="font-mono text-sm">{result.test_case_id.slice(0, 12)}...</TableCell>
+                          <TableCell><Badge variant={result.verdict === "PASS" ? "default" : result.verdict === "FAIL" ? "destructive" : "secondary"}>{result.verdict}</Badge></TableCell>
+                          <TableCell>{(result.confidence * 100).toFixed(1)}%</TableCell>
+                          <TableCell className="text-sm">{result.matcher_used || "N/A"}</TableCell>
+                          <TableCell>{formatDuration(result.execution_time_ms)}</TableCell>
+                          <TableCell>{formatCost(result.estimated_cost)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="config">
-          <Card>
-            <CardHeader><CardTitle>Model Versions</CardTitle></CardHeader>
-            <CardContent>
-              <pre className="text-sm bg-muted p-4 rounded overflow-auto">{JSON.stringify(run.model_versions, null, 2)}</pre>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Prompt Versions</CardTitle></CardHeader>
-            <CardContent>
-              <pre className="text-sm bg-muted p-4 rounded overflow-auto">{JSON.stringify(run.prompt_versions, null, 2)}</pre>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="regressions">
+            <Card>
+              <CardContent>
+                {regressions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No regressions detected</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Test Case</TableHead>
+                          <TableHead>Previous</TableHead>
+                          <TableHead>Current</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Severity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {regressions.map((reg) => (
+                          <TableRow key={reg.id}>
+                            <TableCell className="font-mono text-sm">{reg.test_case_id.slice(0, 12)}...</TableCell>
+                            <TableCell><Badge variant={reg.previous_verdict === "PASS" ? "default" : reg.previous_verdict === "FAIL" ? "destructive" : "secondary"}>{reg.previous_verdict}</Badge></TableCell>
+                            <TableCell><Badge variant={reg.current_verdict === "PASS" ? "default" : reg.current_verdict === "FAIL" ? "destructive" : "secondary"}>{reg.current_verdict}</Badge></TableCell>
+                            <TableCell className="text-sm">{reg.regression_type.replace("_", " ")}</TableCell>
+                            <TableCell><Badge className={getSeverityColor(reg.severity)}>{reg.severity}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="config">
+            <Card>
+              <CardHeader><CardTitle>Model Versions</CardTitle></CardHeader>
+              <CardContent>
+                <pre className="text-sm bg-muted p-4 rounded overflow-auto">{JSON.stringify(run.model_versions, null, 2)}</pre>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>Prompt Versions</CardTitle></CardHeader>
+              <CardContent>
+                <pre className="text-sm bg-muted p-4 rounded overflow-auto">{JSON.stringify(run.prompt_versions, null, 2)}</pre>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
   );
 }

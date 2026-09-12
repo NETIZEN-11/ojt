@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { DashboardLayout } from "@/components/ui/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api } from "@/lib/api";
 import { formatDate, formatCost, getStatusColor } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { Plus, Filter, Download } from "lucide-react";
 
 interface RunSummary {
   id: string;
@@ -70,99 +72,120 @@ export default function RunsPage() {
   }, [isAuthenticated, isLoading, router, fetchRuns]);
 
   if (isLoading || !isAuthenticated) {
-    return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+    return (
+      <DashboardLayout>
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Evaluation Runs</h1>
-        <Button onClick={() => window.location.href = "/runs/new"}>New Evaluation</Button>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Evaluation Runs</h1>
+            <p className="text-muted-foreground">View and manage evaluation runs</p>
+          </div>
+          <Button onClick={() => window.location.href = "/runs/new"}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Evaluation
+          </Button>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
-          <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-            <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
-              <SelectItem value="queued">Queued</SelectItem>
-              <SelectItem value="running">Running</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="review_required">Review Required</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input placeholder="Filter by Agent ID" value={filters.agent_id} onChange={(e) => setFilters({...filters, agent_id: e.target.value})} />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Filters</CardTitle>
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" />
+              Clear Filters
+            </Button>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-4">
+            <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+              <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="queued">Queued</SelectItem>
+                <SelectItem value="running">Running</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="review_required">Review Required</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input placeholder="Filter by Agent ID" value={filters.agent_id} onChange={(e) => setFilters({...filters, agent_id: e.target.value})} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : runs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No runs found</div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Run ID</TableHead>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Suite</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Tests</TableHead>
-                      <TableHead>Results</TableHead>
-                      <TableHead>Regressions</TableHead>
-                      <TableHead>Cost</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {runs.map((run) => (
-                      <TableRow key={run.id} className="cursor-pointer" onClick={() => window.location.href = `/runs/${run.id}`}>
-                        <TableCell className="font-mono text-sm">{run.id.slice(0, 8)}...</TableCell>
-                        <TableCell className="font-mono text-sm">{run.target_agent_id.slice(0, 8)}...</TableCell>
-                        <TableCell className="font-mono text-sm">{run.suite_id.slice(0, 8)}... (v{run.suite_version})</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(run.status)}`}>
-                            {run.status.replace("_", " ")}
-                          </span>
-                        </TableCell>
-                        <TableCell>{run.total_tests}</TableCell>
-                        <TableCell>
-                          <span className="text-green-600">{run.passed_count}</span> / 
-                          <span className="text-red-600">{run.failed_count}</span> / 
-                          <span className="text-yellow-600">{run.inconclusive_count}</span>
-                        </TableCell>
-                        <TableCell>
-                          {run.critical_count > 0 && <span className="text-red-600 font-medium">Critical: {run.critical_count}</span>}
-                          {run.high_count > 0 && <span className="text-orange-600 font-medium ml-2">High: {run.high_count}</span>}
-                          {run.medium_count > 0 && <span className="text-yellow-600 font-medium ml-2">Medium: {run.medium_count}</span>}
-                          {run.low_count > 0 && <span className="text-blue-600 font-medium ml-2">Low: {run.low_count}</span>}
-                        </TableCell>
-                        <TableCell>{formatCost(run.total_cost_usd)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(run.created_at)}</TableCell>
+        <Card>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading...</p>
+              </div>
+            ) : runs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No runs found</div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Run ID</TableHead>
+                        <TableHead>Agent</TableHead>
+                        <TableHead>Suite</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tests</TableHead>
+                        <TableHead>Results</TableHead>
+                        <TableHead>Regressions</TableHead>
+                        <TableHead>Cost</TableHead>
+                        <TableHead>Created</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="flex items-center justify-between mt-4">
-                <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-                <span>Page {page} of {totalPages}</span>
-                <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                    </TableHeader>
+                    <TableBody>
+                      {runs.map((run) => (
+                        <TableRow key={run.id} className="cursor-pointer" onClick={() => window.location.href = `/runs/${run.id}`}>
+                          <TableCell className="font-mono text-sm">{run.id.slice(0, 8)}...</TableCell>
+                          <TableCell className="font-mono text-sm">{run.target_agent_id.slice(0, 8)}...</TableCell>
+                          <TableCell className="font-mono text-sm">{run.suite_id.slice(0, 8)}... (v{run.suite_version})</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(run.status)}`}>
+                              {run.status.replace("_", " ")}
+                            </span>
+                          </TableCell>
+                          <TableCell>{run.total_tests}</TableCell>
+                          <TableCell>
+                            <span className="text-green-600">{run.passed_count}</span> / 
+                            <span className="text-red-600">{run.failed_count}</span> / 
+                            <span className="text-yellow-600">{run.inconclusive_count}</span>
+                          </TableCell>
+                          <TableCell>
+                            {run.critical_count > 0 && <span className="text-red-600 font-medium">Critical: {run.critical_count}</span>}
+                            {run.high_count > 0 && <span className="text-orange-600 font-medium ml-2">High: {run.high_count}</span>}
+                            {run.medium_count > 0 && <span className="text-yellow-600 font-medium ml-2">Medium: {run.medium_count}</span>}
+                            {run.low_count > 0 && <span className="text-blue-600 font-medium ml-2">Low: {run.low_count}</span>}
+                          </TableCell>
+                          <TableCell>{formatCost(run.total_cost_usd)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{formatDate(run.created_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                  <span>Page {page} of {totalPages}</span>
+                  <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next</Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   );
 }

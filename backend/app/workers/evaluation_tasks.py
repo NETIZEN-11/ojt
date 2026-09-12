@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.core.database import get_async_session
 from app.core.logging import get_logger
 from app.domain.enums import RunStatus
+from app.evaluation.cost.cost_tracker import CostTracker
 from app.evaluation.gate.evaluator import GateEvaluator
 from app.evaluation.regression.detector import RegressionDetector
 from app.evaluation.severity.classifier import SeverityClassifier
@@ -49,6 +50,7 @@ def run_evaluation(self, run_id: str):
             baseline_item_repo = BaselineItemRepository(session)
             regression_repo = RegressionRepository(session)
             review_repo = ReviewQueueRepository(session)
+            cost_tracker = CostTracker()
 
             run = await run_repo.get(run_uuid)
             if not run:
@@ -61,9 +63,30 @@ def run_evaluation(self, run_id: str):
                 )
                 await execution_service.execute_run(run_uuid)
 
+                # Check run cost limit after execution
+                limits = cost_tracker.check_limits(run.total_cost_usd, 0)
+                if limits["run_limit_exceeded"]:
+                    run.status = RunStatus.FAILED
+                    run.error_message = f"Run cost limit exceeded: ${run.total_cost_usd:.2f} > ${settings.COST_PER_RUN_LIMIT_USD:.2f}"
+                    run.completed_at = datetime.utcnow()
+                    await session.flush()
+                    logger.warning("run_cost_limit_exceeded", run_id=run_id, cost=run.total_cost_usd)
+                    return
+
                 ScoringServiceClass = get_scoring_service()
                 scoring_service = ScoringServiceClass(execution_repo, result_repo, case_repo)
                 await scoring_service.score_run(run_uuid)
+
+                # Check cost limit after scoring
+                run = await run_repo.get(run_uuid)
+                limits = cost_tracker.check_limits(run.total_cost_usd, 0)
+                if limits["run_limit_exceeded"]:
+                    run.status = RunStatus.FAILED
+                    run.error_message = f"Run cost limit exceeded: ${run.total_cost_usd:.2f} > ${settings.COST_PER_RUN_LIMIT_USD:.2f}"
+                    run.completed_at = datetime.utcnow()
+                    await session.flush()
+                    logger.warning("run_cost_limit_exceeded", run_id=run_id, cost=run.total_cost_usd)
+                    return
 
                 baseline = await baseline_repo.get_active_for_suite(run.suite_id)
                 if baseline and settings.REGRESSION_DETECTION_ENABLED:

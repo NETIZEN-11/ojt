@@ -25,6 +25,8 @@ from app.models.user import Base
 
 if TYPE_CHECKING:
     from app.models.baseline import Baseline, BaselineItem
+    from app.models.dataset import Dataset
+    from app.models.matrix import EvaluationMatrix
     from app.models.run import Execution, Result, Run
 
 
@@ -46,6 +48,9 @@ class TestSuite(Base):
     created_by: Mapped[PG_UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    dataset_id: Mapped[PG_UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     test_cases: Mapped[list["TestCase"]] = relationship(
         back_populates="suite", lazy="dynamic", cascade="all, delete-orphan"
@@ -55,6 +60,8 @@ class TestSuite(Base):
     )
     runs: Mapped[list["Run"]] = relationship(back_populates="suite", lazy="dynamic")
     baselines: Mapped[list["Baseline"]] = relationship(back_populates="suite", lazy="dynamic")
+    matrices: Mapped[list["EvaluationMatrix"]] = relationship(back_populates="suite", lazy="dynamic")
+    dataset: Mapped["Dataset"] = relationship(back_populates="test_suites", lazy="joined")
 
     __table_args__ = (
         Index("ix_test_suites_name_version", "name", "version"),

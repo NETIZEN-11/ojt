@@ -3,14 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from prometheus_client import make_asgi_app
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import close_db, init_db
 from app.core.exceptions import RedTeamException, to_http_exception
 from app.core.logging import get_logger, setup_logging
-from app.core.telemetry import setup_telemetry
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -22,9 +20,6 @@ async def lifespan(app: FastAPI):
     logger.info("application_starting", version=settings.APP_VERSION)
 
     await init_db()
-
-    if settings.OTEL_EXPORTER_OTLP_ENDPOINT:
-        setup_telemetry(app)
 
     yield
 
@@ -49,9 +44,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 

@@ -24,6 +24,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "reviewer": "Review and label findings",
         "viewer": "Read-only access to dashboards and reports",
     },
+    auto_error=False,  # Don't auto-error, allow us to handle missing tokens in development
 )
 
 
@@ -128,8 +129,27 @@ def decode_refresh_token(token: str) -> TokenData:
 
 async def get_current_user(
     security_scopes: SecurityScopes,
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
 ) -> TokenData:
+    # Development bypass: if in development and no token provided, create a mock admin token
+    if settings.is_development and not token:
+        from uuid import uuid4
+        return TokenData(
+            sub=str(uuid4()),
+            username="dev_user",
+            email="dev@local",
+            roles=["admin"],
+            scopes=get_scopes_for_roles(["admin"]),
+            exp=int((datetime.now(UTC) + timedelta(hours=1)).timestamp())
+        )
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     token_data = decode_token(token)
     if security_scopes.scopes:
         for scope in security_scopes.scopes:

@@ -1,5 +1,6 @@
 from datetime import datetime
 from uuid import UUID
+import difflib
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -70,6 +71,116 @@ class PromptVersionResponse(BaseModel):
 class PromotePromptRequest(BaseModel):
     prompt_type: str
     version: str
+
+
+class DeprecatePromptRequest(BaseModel):
+    prompt_type: str
+    version: str
+
+
+class ArchivePromptRequest(BaseModel):
+    prompt_type: str
+    version: str
+
+
+class PromptDiffRequest(BaseModel):
+    prompt_type: str
+    version_a: str
+    version_b: str
+
+
+@router.post("/prompts/promote")
+async def promote_prompt(
+    request: PromotePromptRequest,
+    prompt_repo: PromptVersionRepository = Depends(get_prompt_version_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer"])),
+):
+    prompt = await prompt_repo.get_by_type_version(request.prompt_type, request.version)
+    if not prompt:
+        raise NotFoundError("PromptVersion", f"{request.prompt_type}/{request.version}")
+
+    await prompt_repo.demote_all(request.prompt_type)
+    prompt.status = PromptVersionStatus.ACTIVE
+    prompt.promoted_at = datetime.utcnow()
+    prompt.promoted_by = UUID(current_user.sub)
+    await prompt_repo.session.flush()
+
+    return {"message": "Prompt promoted"}
+
+
+@router.post("/prompts/deprecate")
+async def deprecate_prompt(
+    request: DeprecatePromptRequest,
+    prompt_repo: PromptVersionRepository = Depends(get_prompt_version_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer"])),
+):
+    prompt = await prompt_repo.get_by_type_version(request.prompt_type, request.version)
+    if not prompt:
+        raise NotFoundError("PromptVersion", f"{request.prompt_type}/{request.version}")
+
+    if prompt.status != PromptVersionStatus.ACTIVE:
+        raise ValueError("Can only deprecate active prompts")
+
+    prompt.status = PromptVersionStatus.DEPRECATED
+    prompt.promoted_at = None
+    prompt.promoted_by = None
+    await prompt_repo.session.flush()
+
+    return {"message": "Prompt deprecated"}
+
+
+@router.post("/prompts/archive")
+async def archive_prompt(
+    request: ArchivePromptRequest,
+    prompt_repo: PromptVersionRepository = Depends(get_prompt_version_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer"])),
+):
+    prompt = await prompt_repo.get_by_type_version(request.prompt_type, request.version)
+    if not prompt:
+        raise NotFoundError("PromptVersion", f"{request.prompt_type}/{request.version}")
+
+    if prompt.status == PromptVersionStatus.ACTIVE:
+        raise ValueError("Cannot archive active prompt. Deprecate first.")
+
+    prompt.status = PromptVersionStatus.ARCHIVED
+    await prompt_repo.session.flush()
+
+    return {"message": "Prompt archived"}
+
+
+@router.post("/prompts/diff")
+async def diff_prompts(
+    request: PromptDiffRequest,
+    prompt_repo: PromptVersionRepository = Depends(get_prompt_version_repo),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
+):
+    prompt_a = await prompt_repo.get_by_type_version(request.prompt_type, request.version_a)
+    prompt_b = await prompt_repo.get_by_type_version(request.prompt_type, request.version_b)
+    
+    if not prompt_a:
+        raise NotFoundError("PromptVersion", f"{request.prompt_type}/{request.version_a}")
+    if not prompt_b:
+        raise NotFoundError("PromptVersion", f"{request.prompt_type}/{request.version_b}")
+    
+    # Compute diff
+    import difflib
+    diff = list(difflib.unified_diff(
+        prompt_a.content.splitlines(keepends=True),
+        prompt_b.content.splitlines(keepends=True),
+        fromfile=f"{prompt_a.prompt_type} v{prompt_a.version}",
+        tofile=f"{prompt_b.prompt_type} v{prompt_b.version}",
+    ))
+    
+    return {
+        "prompt_type": request.prompt_type,
+        "version_a": request.version_a,
+        "version_b": request.version_b,
+        "diff": "".join(diff),
+        "content_a": prompt_a.content,
+        "content_b": prompt_b.content,
+        "variables_a": prompt_a.variables,
+        "variables_b": prompt_b.variables,
+    }
 
 
 class FeatureFlagResponse(BaseModel):

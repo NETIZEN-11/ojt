@@ -26,6 +26,7 @@ from app.models.user import Base
 
 if TYPE_CHECKING:
     from app.models.baseline import Baseline
+    from app.models.matrix import EvaluationMatrix
     from app.models.regression import Regression
     from app.models.review import ReviewQueue
     from app.models.target_agent import TargetAgent
@@ -52,6 +53,12 @@ class Run(Base):
     baseline_id: Mapped[PG_UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("baselines.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    matrix_id: Mapped[PG_UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("evaluation_matrices.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -92,6 +99,7 @@ class Run(Base):
     target_agent: Mapped["TargetAgent"] = relationship(back_populates="runs", lazy="joined")
     suite: Mapped["TestSuite"] = relationship(back_populates="runs", lazy="joined")
     baseline: Mapped[Optional["Baseline"]] = relationship(foreign_keys=[baseline_id], lazy="joined")
+    matrix: Mapped[Optional["EvaluationMatrix"]] = relationship(back_populates="runs", lazy="joined")
     executions: Mapped[list["Execution"]] = relationship(
         back_populates="run", lazy="dynamic", cascade="all, delete-orphan"
     )
@@ -129,6 +137,8 @@ class Execution(Base):
         default=ExecutionStatus.QUEUED,
         nullable=False,
     )
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    span_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     target_request: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     target_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     tool_calls: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
@@ -173,6 +183,8 @@ class Result(Base):
         nullable=False,
         index=True,
     )
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    span_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     verdict: Mapped[Verdict] = mapped_column(
         SQLEnum(Verdict, native_enum=False, create_constraint=True),
         nullable=False,
