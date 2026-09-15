@@ -3,6 +3,8 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
+    String,
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -12,10 +14,9 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import (
+    JSON,
     Enum as SQLEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import RegressionType, SeverityLevel, Verdict
@@ -25,18 +26,18 @@ from app.models.user import Base
 class Regression(Base):
     __tablename__ = "regressions"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    run_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    baseline_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    baseline_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("baselines.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -59,10 +60,10 @@ class Regression(Base):
         nullable=False,
         index=True,
     )
-    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    acknowledged_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    acknowledged_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -91,9 +92,9 @@ class Regression(Base):
 class SeverityFinding(Base):
     __tablename__ = "severity_findings"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    regression_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    regression_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("regressions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -104,7 +105,7 @@ class SeverityFinding(Base):
     )
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     deterministic_override: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    categories: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    categories: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

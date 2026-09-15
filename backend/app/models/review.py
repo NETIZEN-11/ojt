@@ -15,7 +15,6 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SQLEnum,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import ReviewLabel, ReviewStatus, SeverityLevel
@@ -25,15 +24,15 @@ from app.models.user import Base
 class ReviewQueue(Base):
     __tablename__ = "review_queue"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    regression_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    regression_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("regressions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    run_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    run_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     severity: Mapped[SeverityLevel] = mapped_column(
         SQLEnum(SeverityLevel, native_enum=False, create_constraint=True),
@@ -48,8 +47,8 @@ class ReviewQueue(Base):
         nullable=False,
         index=True,
     )
-    assigned_to: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
+    assigned_to: Mapped[String | None] = mapped_column(
+        String(36),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -84,9 +83,9 @@ class ReviewQueue(Base):
 class ReviewLabelRecord(Base):
     __tablename__ = "review_labels"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    review_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    review_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("review_queue.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -95,8 +94,8 @@ class ReviewLabelRecord(Base):
         SQLEnum(ReviewLabel, native_enum=False, create_constraint=True),
         nullable=False,
     )
-    reviewer_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    reviewer_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

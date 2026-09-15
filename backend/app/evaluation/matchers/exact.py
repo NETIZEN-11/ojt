@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.core.config import get_settings
 from app.domain.enums import Verdict
 from app.domain.value_objects import EvidenceItem, MatcherConfig

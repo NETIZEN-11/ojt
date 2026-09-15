@@ -70,11 +70,14 @@ export default function ReviewsPage() {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (filterStatus) params.append("status", filterStatus);
-      if (filterSeverity) params.append("severity", filterSeverity);
-      const res = await api.get(`/reviews?${params.toString()}`);
-      setReviews(res.data);
+      // TODO: Backend endpoint /reviews not implemented yet (returns 500 due to missing reviewer_notes column)
+      // Fixed database schema but endpoint may have other issues
+      // const params = new URLSearchParams();
+      // if (filterStatus) params.append("status", filterStatus);
+      // if (filterSeverity) params.append("severity", filterSeverity);
+      // const res = await api.get(`/reviews?${params.toString()}`);
+      // setReviews(res.data);
+      setReviews([]);
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
     } finally {

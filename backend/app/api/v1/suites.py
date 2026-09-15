@@ -69,6 +69,7 @@ class ValidateResponse(BaseModel):
     errors: list[str] = []
 
 
+@router.get("", response_model=list[TestSuiteResponse], include_in_schema=False)
 @router.get("/", response_model=list[TestSuiteResponse])
 async def list_suites(
     skip: int = 0,
@@ -79,6 +80,9 @@ async def list_suites(
         require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
     ),
 ):
+    if skip < 0 or limit < 1 or limit > 100:
+        from app.core.exceptions import ValidationError as VE
+        raise VE("Invalid pagination parameters")
     suites = await suite_repo.list(skip=skip, limit=limit, filters={"is_active": True})
     result = []
     for suite in suites:
@@ -99,6 +103,7 @@ async def list_suites(
     return result
 
 
+@router.post("", response_model=TestSuiteResponse, status_code=201, include_in_schema=False)
 @router.post("/", response_model=TestSuiteResponse, status_code=201)
 async def create_suite(
     suite: TestSuiteCreate,
@@ -137,6 +142,8 @@ async def validate_suite(
         return ValidateResponse(valid=False, errors=[e.message])
 
 
+MAX_IMPORT_SIZE = 5 * 1024 * 1024  # 5MB
+
 @router.post("/import/yaml", response_model=TestSuiteResponse)
 async def import_yaml(
     file: UploadFile = File(...),
@@ -145,6 +152,10 @@ async def import_yaml(
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
 ):
     content = await file.read()
+    if len(content) > MAX_IMPORT_SIZE:
+        raise ValidationError(f"File too large (max {MAX_IMPORT_SIZE} bytes)")
+    if not file.filename or not file.filename.endswith((".yaml", ".yml")):
+        raise ValidationError("Only YAML files are allowed for YAML import")
     service = SuiteService(suite_repo, case_repo)
     created = await service.import_yaml(content.decode(), UUID(current_user.sub))
     cases = await case_repo.list_by_suite(created.id)
@@ -169,6 +180,10 @@ async def import_json(
     current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "ml_engineer"])),
 ):
     content = await file.read()
+    if len(content) > MAX_IMPORT_SIZE:
+        raise ValidationError(f"File too large (max {MAX_IMPORT_SIZE} bytes)")
+    if not file.filename or not file.filename.endswith(".json"):
+        raise ValidationError("Only JSON files are allowed for JSON import")
     service = SuiteService(suite_repo, case_repo)
     created = await service.import_json(content.decode(), UUID(current_user.sub))
     cases = await case_repo.list_by_suite(created.id)

@@ -92,9 +92,11 @@ class JudgeOutput(BaseModel):
 
     @field_validator("evidence")
     @classmethod
-    def validate_evidence_not_empty(cls, v: list[EvidenceItem]) -> list[EvidenceItem]:
-        if not v:
-            raise ValueError("Evidence list cannot be empty for accepted verdict")
+    def validate_evidence_not_empty(cls, v: list[EvidenceItem], info) -> list[EvidenceItem]:
+        # Only require evidence for PASS/FAIL verdicts, not INCONCLUSIVE
+        verdict = info.data.get("verdict")
+        if verdict in (Verdict.PASS, Verdict.FAIL) and not v:
+            raise ValueError(f"Evidence list cannot be empty for {verdict} verdict")
         return v
 
     @field_validator("criteria_results")

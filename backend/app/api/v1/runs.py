@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel
 
 from app.api.deps import (
@@ -63,10 +63,11 @@ class RunResponse(BaseModel):
         from_attributes = True
 
 
+@router.get("", response_model=list[RunResponse], include_in_schema=False)
 @router.get("/", response_model=list[RunResponse])
 async def list_runs(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     target_agent_id: UUID | None = None,
     suite_id: UUID | None = None,
     status: RunStatus | None = None,
@@ -110,8 +111,8 @@ async def get_stats(
         require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
     ),
 ):
-    # Get all runs
-    runs = await run_repo.list(skip=0, limit=1000, filters={})
+    # Get limited runs to avoid OOM - stats over last 200 runs
+    runs = await run_repo.list(skip=0, limit=200, filters={})
     
     if not runs:
         return StatsResponse(
@@ -179,6 +180,7 @@ async def get_stats(
     )
 
 
+@router.post("", response_model=RunResponse, status_code=201, include_in_schema=False)
 @router.post("/", response_model=RunResponse, status_code=201)
 async def create_run(
     run: RunCreate,
@@ -265,12 +267,15 @@ async def cancel_run(
 @router.get("/{run_id}/executions")
 async def list_executions(
     run_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     execution_repo: ExecutionRepository = Depends(get_execution_repo),
     current_user: TokenData = Depends(
         require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
     ),
 ):
-    executions = await execution_repo.list_by_run(run_id)
+    # PAGINATION: Added to prevent OOM on large runs
+    executions = await execution_repo.list_by_run(run_id, skip=skip, limit=limit)
     return [
         {
             "id": str(e.id),
@@ -285,12 +290,15 @@ async def list_executions(
 @router.get("/{run_id}/results")
 async def list_results(
     run_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     result_repo: ResultRepository = Depends(get_result_repo),
     current_user: TokenData = Depends(
         require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
     ),
 ):
-    results = await result_repo.list_by_run(run_id)
+    # PAGINATION: Added to prevent OOM on large runs
+    results = await result_repo.list_by_run(run_id, skip=skip, limit=limit)
     return [
         {
             "id": str(r.id),

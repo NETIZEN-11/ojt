@@ -76,7 +76,10 @@ async def scan_model(
 
 
 @router.get("/security-dashboard")
-async def security_dashboard(db: AsyncSession = Depends(get_db)):
+async def security_dashboard(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "viewer"])),
+):
     """Get security dashboard data."""
     from app.monitoring import security_metrics, security_monitor
 
@@ -100,13 +103,16 @@ async def run_benchmark(
 
 
 @router.get("/benchmarks")
-async def list_benchmarks(db: AsyncSession = Depends(get_db)):
+async def list_benchmarks(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "viewer"])),
+):
     """List all available benchmarks."""
     from app.evaluation.benchmark import benchmark_runner
 
     return {
         "benchmarks": list(benchmark_runner._benchmarks.keys()),
-        "adversarial_categories": benchmark_runner._benchmarks.keys(),
+        "adversarial_categories": list(benchmark_runner._benchmarks.keys()),
     }
 
 
@@ -117,11 +123,17 @@ async def scan_code(
     current_user: TokenData = Depends(require_role(["admin"])),
 ):
     """Scan project code for LLM vulnerabilities."""
+    from pathlib import Path
+
+    p = Path(project_path).resolve()
+    allowed = Path(".").resolve()
+    try:
+        p.relative_to(allowed)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Project path must be within workspace")
     from app.code_scanning import run_security_scan
 
-    from app.code_scanning import run_security_scan
-
-    report = run_security_scan(project_path)
+    report = run_security_scan(str(p))
     return {
         "report_id": report.report_id,
         "project_path": report.project_path,

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -13,9 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import JSON, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import RunStatus
@@ -29,11 +28,11 @@ if TYPE_CHECKING:
 class EvaluationMatrix(Base):
     __tablename__ = "evaluation_matrices"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    suite_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    suite_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -45,8 +44,8 @@ class EvaluationMatrix(Base):
         nullable=False,
         index=True,
     )
-    test_case_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
-    configurations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    test_case_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    configurations: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     total_cells: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     completed_cells: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     failed_cells: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -56,8 +55,8 @@ class EvaluationMatrix(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     suite: Mapped["TestSuite"] = relationship(back_populates="matrices", lazy="joined")
@@ -75,22 +74,22 @@ class EvaluationMatrix(Base):
 class EvaluationMatrixCell(Base):
     __tablename__ = "evaluation_matrix_cells"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    matrix_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    matrix_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("evaluation_matrices.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    configuration: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    run_id: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
+    configuration: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    run_id: Mapped[String | None] = mapped_column(
+        String(36),
         ForeignKey("runs.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

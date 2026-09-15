@@ -42,7 +42,10 @@ async def list_findings(
 
 
 @router.get("/config")
-async def list_guardrail_configs(db: AsyncSession = Depends(get_db)):
+async def list_guardrail_configs(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "viewer"])),
+):
     config_repo = BaseRepository(GuardrailConfig, db)
     configs = await config_repo.list()
     return configs

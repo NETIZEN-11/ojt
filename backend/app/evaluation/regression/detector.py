@@ -73,7 +73,7 @@ class RegressionDetector:
                 test_case_id=test_case_id,
                 previous_verdict=previous,
                 current_verdict=current,
-                regression_type=regression_type.value,
+                regression_type=regression_type,  # Use enum directly, not .value
                 severity=severity,
                 evidence=[
                     EvidenceItem(source="baseline", text=f"Baseline verdict: {previous.value}"),

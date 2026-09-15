@@ -42,7 +42,7 @@ services:
       - CHROMA_SERVER_HOST=0.0.0.0
       - CHROMA_SERVER_HTTP_PORT=8000
 
-    minio:
+  minio:
     image: minio/minio:latest
     container_name: redteam-minio-dev
     command: server /data --console-address ":9001"

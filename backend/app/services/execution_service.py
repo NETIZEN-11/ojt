@@ -85,15 +85,29 @@ class ExecutionService:
                 trace_id=run_trace_id,
                 span_id=generate_span_id(),
             )
-            execution = await self.execution_repo.create(execution)
 
             try:
                 response = await self._call_target_agent(agent, test_case, run)
-                execution.target_response = response
+                
+                # Redact PII BEFORE setting on execution (GDPR compliance)
+                request_body = self._build_request(agent, test_case)
+                execution_data = {
+                    "target_request": request_body,
+                    "target_response": response,
+                    "tool_calls": response.get("tool_calls") if isinstance(response, dict) else None,
+                }
+                redacted_data = redact_execution_data(execution_data)
+                
+                execution.target_request = redacted_data["target_request"]
+                execution.target_response = redacted_data["target_response"]
+                execution.tool_calls = redacted_data["tool_calls"]
                 execution.status = ExecutionStatus.COMPLETED
                 execution.completed_at = datetime.utcnow()
                 elapsed = execution.completed_at - execution.started_at
                 execution.latency_ms = int(elapsed.total_seconds() * 1000)
+                
+                # Create execution record with already-redacted data
+                execution = await self.execution_repo.create(execution)
 
                 # Track cost for target agent call (estimate based on response size)
                 response_text = str(response.get("text", response.get("response", str(response))))
@@ -113,23 +127,13 @@ class ExecutionService:
                 execution.status = ExecutionStatus.FAILED
                 execution.completed_at = datetime.utcnow()
                 execution.error = str(e)
+                execution = await self.execution_repo.create(execution)
                 logger.exception(
                     "execution_failed",
                     run_id=str(run_id),
                     test_case_id=str(test_case.id),
                     error=str(e),
                 )
-
-            # Redact PII before storage
-            execution_data = {
-                "target_request": execution.target_request,
-                "target_response": execution.target_response,
-                "tool_calls": execution.tool_calls,
-            }
-            redacted_data = redact_execution_data(execution_data)
-            execution.target_request = redacted_data["target_request"]
-            execution.target_response = redacted_data["target_response"]
-            execution.tool_calls = redacted_data["tool_calls"]
 
             await self.execution_repo.session.flush()
 

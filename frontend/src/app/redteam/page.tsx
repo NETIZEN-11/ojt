@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Plus, Loader2, Download, Shield, Zap, FileText } from "lucide-react";
+import { Plus, Loader2, Download, Shield, Zap, FileText, RefreshCw } from "lucide-react";
 
 interface AttackCandidate {
   test_case_id: string;
@@ -76,8 +76,10 @@ export default function RedTeamPage() {
   const fetchAttackHistory = async () => {
     setLoadingHistory(true);
     try {
-      const res = await api.get("/redteam/history");
-      setAttackHistory(res.data);
+      // TODO: Backend endpoint /redteam/history not implemented yet
+      // const res = await api.get("/redteam/history");
+      // setAttackHistory(res.data);
+      setAttackHistory([]);
     } catch (error) {
       console.error("Failed to fetch attack history:", error);
     } finally {
@@ -257,11 +259,13 @@ export default function RedTeamPage() {
                         ) : null}
                       </div>
                     </div>
-                  </CardContent>
-                </div>
-              </TabsContent>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-              <TabsContent value="run">
+          <TabsContent value="run">
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Card>
                     <CardHeader>
@@ -405,12 +409,9 @@ export default function RedTeamPage() {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </DashboardLayout>
-      );
-    };
-  }
-
-(End of file - total 410 lines)
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}

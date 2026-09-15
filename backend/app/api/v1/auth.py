@@ -94,31 +94,47 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshRequest):
+async def refresh_token(
+    request: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repo),
+):
     try:
         token_data = decode_refresh_token(request.refresh_token)
     except Exception:
         raise AuthenticationError("Invalid refresh token")
 
+    # SECURITY: Verify user still exists and is active
+    user = await user_repo.get(UUID(token_data.sub))
+    if not user:
+        raise AuthenticationError("User not found")
+    if not user.is_active:
+        raise AuthenticationError("User account is disabled")
+
+    # Get fresh roles from database
+    roles = [role.name for role in user.roles]
+    scopes = get_scopes_for_roles(roles)
+
     access_token = create_access_token(
         data={
             "sub": token_data.sub,
-            "username": token_data.username,
-            "email": token_data.email,
-            "roles": token_data.roles,
-            "scopes": token_data.scopes,
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
         }
     )
     new_refresh_token = create_refresh_token(
         data={
             "sub": token_data.sub,
-            "username": token_data.username,
-            "email": token_data.email,
-            "roles": token_data.roles,
-            "scopes": token_data.scopes,
+            "username": user.username,
+            "email": user.email,
+            "roles": roles,
+            "scopes": scopes,
         }
     )
 
+    logger.info("token_refreshed", user_id=token_data.sub)
     return TokenResponse(
         access_token=access_token,
         refresh_token=new_refresh_token,
@@ -135,24 +151,43 @@ async def register(
     from app.core.config import get_settings
 
     settings = get_settings()
-    # In production, disable open registration unless explicitly allowed
-    if settings.is_production and not settings.FEATURE_EXPERIMENTAL_UI:
-        # Check if any admin exists - if yes, require authentication
-        # For production, only allow registration if no users exist (bootstrap)
-        all_users = await user_repo.list(skip=0, limit=1)
-        if len(all_users) > 0:
-            raise HTTPException(
-                status_code=403,
-                detail="Open registration disabled in production. Contact administrator.",
-            )
+    
+    # SECURITY: In production, strictly control registration
+    if settings.is_production:
+        # Check if open registration is explicitly allowed via feature flag
+        # Note: FEATURE_EXPERIMENTAL_UI should NOT control security features
+        if not getattr(settings, "ALLOW_OPEN_REGISTRATION", False):
+            # Allow registration only if no users exist (bootstrap scenario)
+            all_users = await user_repo.list(skip=0, limit=1)
+            if len(all_users) > 0:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Registration is disabled in production. Contact your administrator for an invitation.",
+                )
 
-    # Password strength validation
+    # Password strength validation - comprehensive checks
     if len(request.password) < 12:
         raise HTTPException(status_code=400, detail="Password must be at least 12 characters")
     if request.password.lower() == request.password or request.password.upper() == request.password:
         raise HTTPException(status_code=400, detail="Password must contain mixed case")
     if not any(c.isdigit() for c in request.password):
         raise HTTPException(status_code=400, detail="Password must contain at least one digit")
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in request.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one special character")
+    
+    # Check for username/email in password
+    if request.username.lower() in request.password.lower():
+        raise HTTPException(status_code=400, detail="Password must not contain username")
+    if request.email.split("@")[0].lower() in request.password.lower():
+        raise HTTPException(status_code=400, detail="Password must not contain email")
+    
+    # Check for common weak passwords
+    COMMON_WEAK_PASSWORDS = {
+        "password123", "password12", "qwerty123", "admin123", "welcome123",
+        "changeme123", "letmein123", "monkey123", "dragon123", "master123"
+    }
+    if request.password.lower() in COMMON_WEAK_PASSWORDS:
+        raise HTTPException(status_code=400, detail="Password is too common - choose a stronger password")
 
     if await user_repo.get_by_email(request.email):
         raise HTTPException(status_code=400, detail="Email already registered")

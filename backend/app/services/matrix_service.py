@@ -262,21 +262,16 @@ class MatrixService:
             cell.run_id = run.id
             await self.cell_repo.session.flush()
 
-            # Execute the run
-            execution_service = ExecutionService(
-                self.run_repo,
-                self.cell_repo.session.get_bind().__class__.__bases__[0]().__class__.__dict__['execution_repo'].__self__,  # This needs fixing
-                None,  # Will be created in execution_service
-                self.agent_repo,
-                self.case_repo,
-            )
-            # We need to create proper repositories for this run
+            # FIXED: Create proper repository instances for execution
             from app.repositories.runs import ExecutionRepository, ResultRepository
+            from app.services.cost_tracking import CostTracker
+            
             exec_repo = ExecutionRepository(self.cell_repo.session)
             result_repo = ResultRepository(self.cell_repo.session)
+            cost_tracker = CostTracker(self.cell_repo.session)
             
             execution_service = ExecutionService(
-                self.run_repo, exec_repo, result_repo, self.agent_repo, self.case_repo
+                self.run_repo, exec_repo, result_repo, self.agent_repo, self.case_repo, cost_tracker
             )
             await execution_service.execute_run(run.id)
 

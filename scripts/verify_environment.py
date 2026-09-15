@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify the development environment is correctly set up."""
 
+import os
 import sys
 import subprocess
 import asyncio
@@ -10,12 +11,22 @@ import chromadb
 import boto3
 from botocore.exceptions import ClientError
 
+# SECURITY: Load credentials from environment variables instead of hardcoding
+def get_env(key: str, default: str = None) -> str:
+    value = os.getenv(key, default)
+    if value is None:
+        print(f"⚠️  Warning: {key} not set, using default '{default}'")
+        return default
+    return value
+
 async def check_postgres():
     try:
         conn = await asyncpg.connect(
-            host="localhost", port=5432,
-            user="postgres", password="postgres",
-            database="redteam"
+            host=get_env("DB_HOST", "localhost"),
+            port=int(get_env("DB_PORT", "5432")),
+            user=get_env("DB_USER", "postgres"),
+            password=get_env("DB_PASSWORD", "postgres"),
+            database=get_env("DB_NAME", "redteam")
         )
         version = await conn.fetchval("SELECT version()")
         await conn.close()
@@ -27,7 +38,11 @@ async def check_postgres():
 
 async def check_redis():
     try:
-        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+        r = redis.Redis(
+            host=get_env("REDIS_HOST", "localhost"),
+            port=int(get_env("REDIS_PORT", "6379")),
+            decode_responses=True
+        )
         r.ping()
         info = r.info()
         print(f"✅ Redis: {info['redis_version']}")
@@ -38,7 +53,10 @@ async def check_redis():
 
 async def check_chromadb():
     try:
-        client = chromadb.HttpClient(host="localhost", port=8000)
+        client = chromadb.HttpClient(
+            host=get_env("CHROMA_HOST", "localhost"),
+            port=int(get_env("CHROMA_PORT", "8000"))
+        )
         client.heartbeat()
         print("✅ ChromaDB: Connected")
         return True
@@ -50,12 +68,13 @@ async def check_minio():
     try:
         client = boto3.client(
             "s3",
-            endpoint_url="http://localhost:9000",
-            aws_access_key_id="minioadmin",
-            aws_secret_access_key="minioadmin",
-            region_name="us-east-1"
+            endpoint_url=get_env("S3_ENDPOINT_URL", "http://localhost:9000"),
+            aws_access_key_id=get_env("S3_ACCESS_KEY", "minioadmin"),
+            aws_secret_access_key=get_env("S3_SECRET_KEY", "minioadmin"),
+            region_name=get_env("S3_REGION", "us-east-1")
         )
-        client.head_bucket(Bucket="redteam-artifacts")
+        bucket = get_env("S3_BUCKET", "redteam-artifacts")
+        client.head_bucket(Bucket=bucket)
         print("✅ MinIO: Connected")
         return True
     except ClientError as e:

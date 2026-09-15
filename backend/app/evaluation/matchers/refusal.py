@@ -28,8 +28,20 @@ class RefusalMatcher(BaseMatcher):
         response_lower = response.lower()
         matched_patterns = []
 
+        # SECURITY: Add timeout protection for pattern matching
+        import asyncio
+        
+        async def search_with_timeout(pattern, text, timeout_ms=1000):
+            try:
+                return await asyncio.wait_for(
+                    asyncio.to_thread(pattern.search, text),
+                    timeout=timeout_ms / 1000
+                )
+            except asyncio.TimeoutError:
+                return None
+
         for pattern in self.patterns:
-            match = pattern.search(response)
+            match = await search_with_timeout(pattern, response)
             if match:
                 matched_patterns.append(match.group())
 

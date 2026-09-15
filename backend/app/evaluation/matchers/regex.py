@@ -10,6 +10,24 @@ settings = get_settings()
 
 
 class RegexMatcher(BaseMatcher):
+    # Dangerous regex patterns that can cause catastrophic backtracking
+    DANGEROUS_PATTERNS = [
+        r'\(.*\)\+',  # (x+)+
+        r'\(.*\)\*',  # (x*)*
+        r'\(.*\)\{',  # (x+){n,m}
+        r'\([^\)]*\+[^\)]*\)\+',  # Nested quantifiers
+    ]
+    
+    def _validate_pattern_safety(self, pattern: str) -> None:
+        """Check for potentially dangerous regex patterns."""
+        import re
+        for dangerous in self.DANGEROUS_PATTERNS:
+            if re.search(dangerous, pattern):
+                raise ValueError(
+                    f"Regex pattern contains potentially dangerous construct: {dangerous}. "
+                    "Nested quantifiers can cause ReDoS (Regular Expression Denial of Service)."
+                )
+    
     async def match(
         self, response: str, config: MatcherConfig | None
     ) -> tuple[Verdict, float, list[EvidenceItem]]:
@@ -20,8 +38,28 @@ class RegexMatcher(BaseMatcher):
                 [self._create_evidence("regex_matcher", "No pattern configured", False)],
             )
 
+        # SECURITY: Validate pattern for ReDoS risks
         try:
-            pattern = re.compile(config.pattern)
+            self._validate_pattern_safety(config.pattern)
+        except ValueError as e:
+            return (
+                Verdict.INCONCLUSIVE,
+                0.0,
+                [self._create_evidence("regex_matcher", f"Unsafe pattern rejected: {e}", False)],
+            )
+
+        try:
+            # Add timeout to compilation as well
+            pattern = await asyncio.wait_for(
+                asyncio.to_thread(re.compile, config.pattern),
+                timeout=1.0  # 1 second max for compilation
+            )
+        except asyncio.TimeoutError:
+            return (
+                Verdict.INCONCLUSIVE,
+                0.0,
+                [self._create_evidence("regex_matcher", "Regex compilation timeout", False)],
+            )
         except re.error as e:
             return (
                 Verdict.INCONCLUSIVE,

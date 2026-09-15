@@ -4,11 +4,60 @@ from typing import Any, Dict, Optional
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+import ipaddress
+import socket
+from urllib.parse import urlparse
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 settings = get_settings()
 logger = get_logger(__name__)
+
+
+def _is_private_ip(host: str) -> bool:
+    """Check if hostname resolves to a private IP address."""
+    try:
+        ip = ipaddress.ip_address(socket.gethostbyname(host))
+        return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+    except Exception:
+        return False
+
+
+def _validate_resolved_ip(host: str) -> None:
+    """Validate that hostname resolves to allowed IP. Must be called immediately before connection."""
+    try:
+        resolved_ip = socket.gethostbyname(host)
+        ip = ipaddress.ip_address(resolved_ip)
+        
+        # Block private IPs if configured
+        if settings.TARGET_AGENT_BLOCK_PRIVATE_IPS:
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                raise ValueError(f"Resolved IP {resolved_ip} is private/reserved")
+        
+        # Additional check for localhost in production
+        if settings.is_production and resolved_ip in ("127.0.0.1", "::1", "localhost"):
+            raise ValueError(f"Localhost access blocked in production")
+            
+    except socket.gaierror as e:
+        raise ValueError(f"Hostname resolution failed: {e}")
+
+
+def validate_target_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme: {parsed.scheme}")
+    if not parsed.hostname:
+        raise ValueError("URL must have a hostname")
+    allowed = settings.allowed_hosts_list
+    if allowed and parsed.hostname not in allowed:
+        raise ValueError(f"Host {parsed.hostname} not in allowed hosts")
+    
+    # Initial validation - note: must re-validate before actual connection due to DNS rebinding
+    if settings.TARGET_AGENT_BLOCK_PRIVATE_IPS and _is_private_ip(parsed.hostname):
+        raise ValueError(f"Private IP access blocked: {parsed.hostname}")
+    if parsed.hostname in ("localhost", "127.0.0.1", "::1") and settings.is_production:
+        raise ValueError("Localhost access not allowed in production")
 
 
 class TargetAgentProvider(ABC):
@@ -31,6 +80,11 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
         timeout: int = 30,
         max_retries: int = 3,
     ):
+        validate_target_url(endpoint_url)
+        if timeout > 60 or timeout < 1:
+            raise ValueError("Timeout must be between 1 and 60 seconds")
+        if max_retries > 5:
+            raise ValueError("max_retries too high")
         self.endpoint_url = endpoint_url
         self.auth_config = auth_config or {}
         self.request_template = request_template or {}
@@ -52,6 +106,11 @@ class HTTPTargetAgentProvider(TargetAgentProvider):
         request_body = self._build_request(input_text, context)
 
         try:
+            # SECURITY: Re-validate IP immediately before connection to prevent DNS rebinding
+            parsed = urlparse(self.endpoint_url)
+            if parsed.hostname:
+                _validate_resolved_ip(parsed.hostname)
+            
             response = await self.client.post(self.endpoint_url, json=request_body)
             response.raise_for_status()
             return self._extract_response(response.json())

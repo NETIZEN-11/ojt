@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -15,10 +16,9 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import (
+    JSON,
     Enum as SQLEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import Verdict
@@ -34,24 +34,24 @@ if TYPE_CHECKING:
 class Baseline(Base):
     __tablename__ = "baselines"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    suite_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    suite_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     suite_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    run_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    run_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     framework_version: Mapped[str] = mapped_column(String(50), nullable=False)
-    model_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, nullable=False)
-    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, nullable=False)
-    approved_by: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    model_versions: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    approved_by: Mapped[String] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     approved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -82,15 +82,15 @@ class Baseline(Base):
 class BaselineItem(Base):
     __tablename__ = "baseline_items"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    baseline_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    baseline_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("baselines.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -100,7 +100,7 @@ class BaselineItem(Base):
         nullable=False,
     )
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
-    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -14,9 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import JSON, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import TestCaseCategory
@@ -35,7 +34,7 @@ class DatasetStatus(str, Enum):
 class Dataset(Base):
     __tablename__ = "datasets"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[DatasetStatus] = mapped_column(
@@ -47,11 +46,11 @@ class Dataset(Base):
     
     # Dataset configuration
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)  # file, database, api, synthetic
-    source_config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
-    schema: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)  # column definitions
+    source_config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    schema: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)  # column definitions
     
     # Splitting
-    split_config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)  # train/val/test ratios
+    split_config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)  # train/val/test ratios
     split_seed: Mapped[int] = mapped_column(Integer, default=42)
     
     # Metadata
@@ -68,8 +67,8 @@ class Dataset(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     versions: Mapped[list["DatasetVersion"]] = relationship(
@@ -86,9 +85,9 @@ class Dataset(Base):
 class DatasetVersion(Base):
     __tablename__ = "dataset_versions"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    dataset_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    dataset_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("datasets.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -96,11 +95,11 @@ class DatasetVersion(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     
     # Snapshot
-    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # Full dataset snapshot
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)  # Full dataset snapshot
     changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Split info
-    split_sizes: Mapped[dict[str, int]] = mapped_column(JSONB, default=dict, nullable=False)  # train/val/test counts
+    split_sizes: Mapped[dict[str, int]] = mapped_column(JSON, default=dict, nullable=False)  # train/val/test counts
     
     # Metadata
     total_records: Mapped[int] = mapped_column(Integer, default=0)
@@ -109,8 +108,8 @@ class DatasetVersion(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     dataset: Mapped["Dataset"] = relationship(back_populates="versions", lazy="joined")
@@ -124,9 +123,9 @@ class DatasetVersion(Base):
 class DatasetSplit(Base):
     __tablename__ = "dataset_splits"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    dataset_version_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    dataset_version_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("dataset_versions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -134,8 +133,8 @@ class DatasetSplit(Base):
     split_name: Mapped[str] = mapped_column(String(50), nullable=False)  # train, val, test
     
     # Split data reference
-    records: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
-    record_indices: Mapped[list[int]] = mapped_column(JSONB, default=list, nullable=False)  # Original dataset indices
+    records: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
+    record_indices: Mapped[list[int]] = mapped_column(JSON, default=list, nullable=False)  # Original dataset indices
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

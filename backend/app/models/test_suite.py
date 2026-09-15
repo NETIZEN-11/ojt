@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -14,10 +15,9 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import (
+    JSON,
     Enum as SQLEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import ExpectedBehaviorType, TestCaseCategory, TestCaseSeverity
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 class TestSuite(Base):
     __tablename__ = "test_suites"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -45,11 +45,11 @@ class TestSuite(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    dataset_id: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True
+    dataset_id: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     test_cases: Mapped[list["TestCase"]] = relationship(
@@ -72,21 +72,21 @@ class TestSuite(Base):
 class TestSuiteVersion(Base):
     __tablename__ = "test_suite_versions"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    suite_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    suite_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     suite: Mapped["TestSuite"] = relationship(back_populates="versions", lazy="joined")
@@ -97,9 +97,9 @@ class TestSuiteVersion(Base):
 class TestCase(Base):
     __tablename__ = "test_cases"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    suite_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    suite_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -120,10 +120,10 @@ class TestCase(Base):
         SQLEnum(ExpectedBehaviorType, native_enum=False, create_constraint=True),
         nullable=False,
     )
-    matcher_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    rubric_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    matcher_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    rubric_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     test_case_metadata: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, default=dict, nullable=False
+        "metadata", JSON, default=dict, nullable=False
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -132,8 +132,8 @@ class TestCase(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     suite: Mapped["TestSuite"] = relationship(back_populates="test_cases", lazy="joined")
@@ -157,21 +157,21 @@ class TestCase(Base):
 class TestCaseVersion(Base):
     __tablename__ = "test_case_versions"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     test_case: Mapped["TestCase"] = relationship(back_populates="versions", lazy="joined")

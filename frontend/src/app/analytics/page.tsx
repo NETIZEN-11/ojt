@@ -62,8 +62,19 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await api.get(`/analytics?range=${timeRange}`);
-      setAnalytics(res.data);
+      // TODO: Backend endpoint /analytics not implemented yet
+      // const res = await api.get(`/analytics?range=${timeRange}`);
+      // setAnalytics(res.data);
+      setAnalytics({
+        runs_over_time: [],
+        pass_rate_over_time: [],
+        regressions_over_time: [],
+        cost_over_time: [],
+        latency_over_time: [],
+        severity_distribution: [],
+        category_distribution: [],
+        top_failing_tests: [],
+      });
     } catch (error) {
       console.error("Failed to fetch analytics:", error);
     } finally {

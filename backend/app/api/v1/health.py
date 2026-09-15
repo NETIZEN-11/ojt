@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import get_settings
+from app.core.security import TokenData, require_role
 
 router = APIRouter()
 settings = get_settings()
@@ -58,7 +59,9 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/metrics")
-async def metrics():
+async def metrics(
+    current_user: TokenData = Depends(require_role(["admin"])),
+):
     from fastapi.responses import Response
     from prometheus_client import generate_latest
 

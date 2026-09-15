@@ -115,15 +115,30 @@ class ScoringService:
             )
             await self.result_repo.create(result)
 
+            # FIXED: Use database-level atomic increment to prevent race conditions
+            from sqlalchemy import update
+            from app.models.run import Run as RunModel
+            
             if scoring_result.verdict == Verdict.PASS:
-                run.passed_count += 1
+                await self.execution_repo.session.execute(
+                    update(RunModel).where(RunModel.id == run_id).values(passed_count=RunModel.passed_count + 1)
+                )
             elif scoring_result.verdict == Verdict.FAIL:
-                run.failed_count += 1
+                await self.execution_repo.session.execute(
+                    update(RunModel).where(RunModel.id == run_id).values(failed_count=RunModel.failed_count + 1)
+                )
             else:
-                run.inconclusive_count += 1
+                await self.execution_repo.session.execute(
+                    update(RunModel).where(RunModel.id == run_id).values(inconclusive_count=RunModel.inconclusive_count + 1)
+                )
 
-            run.total_cost_usd += scoring_result.estimated_cost
-            run.total_latency_ms += scoring_result.execution_time_ms
+            # Update cost and latency atomically
+            await self.execution_repo.session.execute(
+                update(RunModel).where(RunModel.id == run_id).values(
+                    total_cost_usd=RunModel.total_cost_usd + scoring_result.estimated_cost,
+                    total_latency_ms=RunModel.total_latency_ms + scoring_result.execution_time_ms,
+                )
+            )
 
         run.status = RunStatus.DIFFING
         await self.execution_repo.session.flush()

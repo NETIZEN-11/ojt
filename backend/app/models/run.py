@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -15,10 +16,9 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import (
+    JSON,
     Enum as SQLEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import ExecutionStatus, ExpectedBehaviorType, RunStatus, Verdict
@@ -36,28 +36,28 @@ if TYPE_CHECKING:
 class Run(Base):
     __tablename__ = "runs"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    target_agent_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    target_agent_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("target_agents.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    suite_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    suite_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     suite_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    baseline_id: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
+    baseline_id: Mapped[String | None] = mapped_column(
+        String(36),
         ForeignKey("baselines.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    matrix_id: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
+    matrix_id: Mapped[String | None] = mapped_column(
+        String(36),
         ForeignKey("evaluation_matrices.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -69,9 +69,9 @@ class Run(Base):
         index=True,
     )
     framework_version: Mapped[str] = mapped_column(String(50), default="1.0.0", nullable=False)
-    model_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, nullable=False)
-    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, nullable=False)
-    config_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    model_versions: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    config_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     total_tests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -92,8 +92,8 @@ class Run(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    created_by: Mapped[PG_UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    created_by: Mapped[String | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     target_agent: Mapped["TargetAgent"] = relationship(back_populates="runs", lazy="joined")
@@ -122,12 +122,12 @@ class Run(Base):
 class Execution(Base):
     __tablename__ = "executions"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    run_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -139,9 +139,9 @@ class Execution(Base):
     )
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     span_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    target_request: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    target_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    tool_calls: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    target_request: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    target_response: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    tool_calls: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -166,19 +166,19 @@ class Execution(Base):
 class Result(Base):
     __tablename__ = "results"
 
-    id: Mapped[PG_UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    execution_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    id: Mapped[String] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    execution_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("executions.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
     )
-    run_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
+    run_id: Mapped[String] = mapped_column(
+        String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    test_case_id: Mapped[PG_UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+    test_case_id: Mapped[String] = mapped_column(
+        String(36),
         ForeignKey("test_cases.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -195,14 +195,14 @@ class Result(Base):
         SQLEnum(ExpectedBehaviorType, native_enum=False, create_constraint=True),
         nullable=True,
     )
-    judge_output: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    second_judge_output: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    judge_output: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    second_judge_output: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     judge_agreement: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     execution_time_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     tokens_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     estimated_cost: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    errors: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    errors: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

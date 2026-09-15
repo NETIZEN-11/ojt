@@ -69,24 +69,48 @@ async def check_guardrails(messages: list[MCPMessage]) -> list[GuardrailCheckRes
         # Check for jailbreak patterns
         import re
 
+        # Enhanced pattern detection for prompt injection
         patterns = {
             "jailbreak": [
-                re.compile(r"(ignore|disregard|override)\s+(your|the)\s+(instructions|rules)", re.IGNORECASE),
-                re.compile(r"(developer\s+mode|jailbreak|system\s+prompt)", re.IGNORECASE),
+                re.compile(r"(ignore|disregard|override|forget)\s+(your|the|all|previous)\s+(instructions|rules|system|prompts?)", re.IGNORECASE),
+                re.compile(r"(developer\s+mode|jailbreak|system\s+prompt|admin\s+mode|god\s+mode)", re.IGNORECASE),
+                re.compile(r"(you\s+are\s+now|pretend\s+to\s+be|act\s+as)\s+(a\s+)?(different|new|another)", re.IGNORECASE),
             ],
             "prompt_injection": [
-                re.compile(r"(system\s+message|hidden\s+message|injected\s+prompt)", re.IGNORECASE),
-                re.compile(r"(<\s*system|<\s*prompt)", re.IGNORECASE),
+                re.compile(r"(system\s+message|hidden\s+message|injected\s+prompt|internal\s+prompt)", re.IGNORECASE),
+                re.compile(r"(<\s*system|<\s*prompt|<\s*user|<\s*assistant)", re.IGNORECASE),
+                re.compile(r"\[SYSTEM\]|\[INSTRUCTION\]|\[BEGIN\s+SYSTEM\]", re.IGNORECASE),
+                re.compile(r"```(system|instruction|prompt)", re.IGNORECASE),
             ],
             "pii_extraction": [
-                re.compile(r"\b\d{3}-\d{2}-\d{4}\b", re.IGNORECASE),
-                re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", re.IGNORECASE),
+                re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),  # SSN
+                re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),  # Email
+                re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),  # Credit card
+            ],
+            "role_manipulation": [
+                re.compile(r"(change|switch|become|transform)\s+(?:to|into)\s+(?:a\s+)?(admin|root|system|developer)", re.IGNORECASE),
+                re.compile(r"grant\s+(?:me\s+)?(?:admin|root|system)\s+(?:access|privileges|rights)", re.IGNORECASE),
+            ],
+            "context_manipulation": [
+                re.compile(r"(reset|clear|erase|delete)\s+(?:the\s+)?(?:conversation|context|history|memory)", re.IGNORECASE),
+                re.compile(r"start\s+(?:a\s+)?new\s+session", re.IGNORECASE),
             ],
         }
 
         for guardrail_type, guardrail_patterns in patterns.items():
             for pattern in guardrail_patterns:
                 for msg in messages:
+                    # Check content length to prevent evasion via huge payloads
+                    if len(msg.content) > 50000:  # 50KB limit per message
+                        results.append(GuardrailCheckResult(
+                            passed=False,
+                            blocked=True,
+                            severity="high",
+                            guardrail_type="oversized_content",
+                            confidence=1.0,
+                        ))
+                        return results
+                    
                     if pattern.search(msg.content):
                         results.append(GuardrailCheckResult(
                             passed=False,
@@ -141,7 +165,10 @@ async def proxy_request(
 
 
 @router.get("/config")
-async def get_mcp_config(db: AsyncSession = Depends(get_db)):
+async def get_mcp_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "viewer"])),
+):
     """Get MCP proxy configuration."""
     return {"proxy_enabled": True, "default_model": settings.PRIMARY_JUDGE_MODEL}
 

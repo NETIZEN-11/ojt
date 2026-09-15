@@ -51,7 +51,22 @@ class ModelScanner:
         findings = []
         errors = []
 
-        path = Path(model_path)
+        # Prevent path traversal
+        path = Path(model_path).resolve()
+        if ".." in model_path or not path.is_absolute():
+            # Allow relative but resolve, then ensure not escaping allowed roots
+            pass
+        allowed_prefixes = [Path("/tmp"), Path("/models"), Path("./models"), Path(".").resolve()]
+        # In development allow current directory; in production restrict
+        if model_path.startswith(("/", "\\")) and not any(str(path).startswith(str(p.resolve()) if p.exists() else str(p)) for p in allowed_prefixes):
+            return ScanReport(
+                model_id=model_id or model_path,
+                model_path=model_path,
+                scan_status="failed",
+                findings=[],
+                errors=["Model path not in allowed directories"],
+                scan_duration_ms=0,
+            )
         if not path.exists():
             return ScanReport(
                 model_id=model_id or model_path,

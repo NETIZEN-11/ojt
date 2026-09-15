@@ -1,8 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, HttpUrl
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, HttpUrl, field_validator
 
 from app.api.deps import TokenData, get_agent_repo, require_role
 from app.core.exceptions import ConflictError, NotFoundError
@@ -25,6 +25,20 @@ class TargetAgentCreate(BaseModel):
     timeout_seconds: int = 30
     max_retries: int = 3
     health_check_url: HttpUrl | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if len(v) > 200:
+            raise ValueError("Name too long")
+        return v
+
+    @field_validator("timeout_seconds")
+    @classmethod
+    def validate_timeout(cls, v: int) -> int:
+        if v < 1 or v > 60:
+            raise ValueError("timeout must be 1-60")
+        return v
 
 
 class TargetAgentUpdate(BaseModel):
@@ -87,10 +101,11 @@ class HealthCheckResponse(BaseModel):
     error: str | None = None
 
 
+@router.get("", response_model=list[TargetAgentResponse], include_in_schema=False)
 @router.get("/", response_model=list[TargetAgentResponse])
 async def list_agents(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     agent_repo: TargetAgentRepository = Depends(get_agent_repo),
     current_user: TokenData = Depends(
         require_role(["admin", "safety_engineer", "ml_engineer", "qa_engineer", "viewer"])
@@ -100,6 +115,7 @@ async def list_agents(
     return [TargetAgentResponse.model_validate(_sanitize_agent_response(a, current_user)) for a in agents]
 
 
+@router.post("", response_model=TargetAgentResponse, status_code=201, include_in_schema=False)
 @router.post("/", response_model=TargetAgentResponse, status_code=201)
 async def create_agent(
     agent: TargetAgentCreate,

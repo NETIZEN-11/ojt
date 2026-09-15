@@ -10,6 +10,8 @@ from uuid import uuid4
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends
 
+from app.core.security import TokenData, require_role
+
 
 class VulnerabilitySeverity(str, Enum):
     CRITICAL = "critical"
@@ -240,7 +242,9 @@ router = APIRouter()
 
 
 @router.get("/")
-async def scan_project():
+async def scan_project(
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer"])),
+):
     report = run_security_scan(".")
     return {
         "report_id": report.report_id,
@@ -251,7 +255,9 @@ async def scan_project():
 
 
 @router.get("/findings")
-async def list_findings():
+async def list_findings(
+    current_user: TokenData = Depends(require_role(["admin", "safety_engineer", "viewer"])),
+):
     report = run_security_scan(".")
     return {
         "findings": [
